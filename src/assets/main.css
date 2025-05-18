@@ -1,0 +1,126 @@
+@import './base.css';
+
+/* General styles */
+:root {
+  --primary-color: #4b70e2;
+  --secondary-color: #8f9bba;
+  --success-color: #67c23a;
+  --warning-color: #e6a23c;
+  --danger-color: #f56c6c;
+  --text-primary: #303133;
+  --text-secondary: #606266;
+  --text-placeholder: #c0c4cc;
+  --border-color: #dcdfe6;
+  --border-hover: #c0c4cc;
+  --background-color: #f5f7fa;
+  --white: #ffffff;
+  --shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+}
+
+body {
+  font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  margin: 0;
+  padding: 0;
+  color: var(--text-primary);
+  background-color: var(--background-color);
+}
+
+/* Layout */
+.app-container {
+  display: flex;
+  min-height: 100vh;
+}
+
+.sidebar {
+  width: 250px;
+  background-color: var(--white);
+  box-shadow: var(--shadow);
+  z-index: 10;
+}
+
+.main-content {
+  flex: 1;
+  padding: 20px;
+  background-color: var(--background-color);
+}
+
+/* Page headings */
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.page-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin: 0;
+  color: var(--text-primary);
+}
+
+/* Cards */
+.card {
+  background-color: var(--white);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+/* Forms */
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 500;
+}
+
+/* Tables */
+.table-container {
+  overflow-x: auto;
+}
+
+.status-pill {
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 0.85rem;
+  display: inline-block;
+  text-align: center;
+}
+
+.status-expired {
+  background-color: rgba(245, 108, 108, 0.15);
+  color: var(--danger-color);
+}
+
+.status-near-expiry {
+  background-color: rgba(230, 162, 60, 0.15);
+  color: var(--warning-color);
+}
+
+.status-safe {
+  background-color: rgba(103, 194, 58, 0.15);
+  color: var(--success-color);
+}
+
+/* Actions */
+.action-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .app-container {
+    flex-direction: column;
+  }
+  
+  .sidebar {
+    width: 100%;
+    height: auto;
+  }
+}
