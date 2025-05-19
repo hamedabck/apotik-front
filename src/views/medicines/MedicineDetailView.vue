@@ -90,6 +90,14 @@
         <template #header>
           <div class="card-header">
             <h2 class="card-title">Additional Details</h2>
+            <el-button 
+              type="primary" 
+              size="small" 
+              @click="navigateToEditSection('Details')"
+              class="edit-button"
+            >
+              <el-icon><i-ep-edit /></el-icon> Edit Details
+            </el-button>
           </div>
         </template>
         
@@ -195,29 +203,50 @@
         <template #header>
           <div class="card-header">
             <h2 class="card-title">Insurance Coverage</h2>
+            <el-button 
+              type="primary" 
+              size="small" 
+              @click="navigateToEditSection('Insurance')"
+              class="edit-button"
+            >
+              <el-icon><i-ep-edit /></el-icon> Edit Insurance
+            </el-button>
           </div>
         </template>
         
         <el-table :data="medicine.insurances" border stripe style="width: 100%">
-          <el-table-column prop="type" label="Insurance Type" width="180" />
-          
-          <el-table-column prop="speciality" label="Speciality" width="150" />
-          
-          <el-table-column label="Insurance Price" width="150">
+          <el-table-column label="Insurance Provider" width="180">
             <template #default="scope">
-              ${{ scope.row.price.toFixed(2) }}
+              {{ scope.row.insuranceName || scope.row.type }}
             </template>
           </el-table-column>
           
-          <el-table-column label="Coverage" width="120">
+          <el-table-column label="Specialties" width="180">
             <template #default="scope">
-              {{ scope.row.percentage }}%
+              <div class="specialties-list">
+                <el-tag 
+                  v-for="(specialty, index) in scope.row.specialties" 
+                  :key="index"
+                  size="small" 
+                  class="specialty-tag">
+                  {{ specialty }}
+                </el-tag>
+                <span v-if="!scope.row.specialties || scope.row.specialties.length === 0">
+                  {{ scope.row.speciality || 'None' }}
+                </span>
+              </div>
             </template>
           </el-table-column>
           
-          <el-table-column label="Insurance Share" width="150">
+          <el-table-column label="Coverage Details" min-width="250">
             <template #default="scope">
-              ${{ scope.row.share.toFixed(2) }}
+              <div class="coverage-details">
+                <div><strong>Price:</strong> ${{ scope.row.price.toFixed(2) }}</div>
+                <div><strong>Coverage:</strong> {{ scope.row.percentage }}%</div>
+                <div><strong>Ins. Share:</strong> ${{ (scope.row.coverageAmount || scope.row.share).toFixed(2) }}</div>
+                <div><strong>Gov. Share:</strong> ${{ scope.row.share.toFixed(2) }}</div>
+                <div><strong>Total Coverage:</strong> ${{ scope.row.total.toFixed(2) }}</div>
+              </div>
             </template>
           </el-table-column>
           
@@ -349,6 +378,10 @@ const navigateToStockAdjustment = () => {
   router.push({ name: 'StockAdjustment', query: { medicineId } })
 }
 
+const navigateToEditSection = (section) => {
+  router.push(`/medicines/${medicineId}/edit?tab=${section.toLowerCase()}`)
+}
+
 const goBack = () => {
   router.go(-1)
 }
@@ -416,5 +449,32 @@ const goBack = () => {
 
 .location-item:last-child {
   margin-bottom: 0;
+}
+
+.edit-button {
+  background-color: #1890ff;
+  border-color: #1890ff;
+  color: white;
+}
+
+.edit-button:hover {
+  background-color: #40a9ff;
+  border-color: #40a9ff;
+}
+
+.specialties-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.specialty-tag {
+  margin-bottom: 4px;
+}
+
+.coverage-details {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 </style> 

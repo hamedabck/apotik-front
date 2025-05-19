@@ -216,9 +216,9 @@
                   type="primary" 
                   size="small"
                   @click="addNewInsurance"
-                  circle
-                  plain>
-                  <el-icon><i-ep-plus /></el-icon>
+                  class="add-button"
+                >
+                  <el-icon><i-ep-plus /></el-icon> + Add Insurance
                 </el-button>
               </h3>
               
@@ -229,96 +229,195 @@
                     type="danger" 
                     size="small"
                     @click="removeInsurance(index)"
-                    circle
-                    plain>
-                    <el-icon><i-ep-delete /></el-icon>
+                    class="remove-button"
+                  >
+                    <el-icon><i-ep-delete /></el-icon> Remove
                   </el-button>
                 </div>
                 
-                <el-row :gutter="20">
-                  <el-col :span="12">
-                    <el-form-item :label="'Insurance Type'" :prop="'insurances.' + index + '.type'">
-                      <el-select v-model="insurance.type" placeholder="Select insurance type" style="width: 100%">
-                        <el-option label="Basic Insurance" value="Basic Insurance" />
-                        <el-option label="Supplementary Insurance" value="Supplementary Insurance" />
-                        <el-option label="Special Coverage" value="Special Coverage" />
-                      </el-select>
-                    </el-form-item>
-                  </el-col>
+                <div class="insurance-content">
+                  <div class="form-section">
+                    <div class="table-heading">
+                      <div class="table-heading-item">Insurance Provider</div>
+                      <div class="table-heading-item">Medicine Specialties</div>
+                    </div>
+                    
+                    <div class="form-label">Insurance Provider</div>
+                    <el-select 
+                      v-model="insurance.insuranceId" 
+                      placeholder="Select insurance provider" 
+                      style="width: 100%"
+                      @change="(val) => handleInsuranceSelect(val, index)"
+                    >
+                      <el-option 
+                        v-for="ins in availableInsurances" 
+                        :key="ins.id" 
+                        :label="ins.name" 
+                        :value="ins.id" 
+                      />
+                    </el-select>
+                  </div>
                   
-                  <el-col :span="12">
-                    <el-form-item :label="'Medicine Speciality'" :prop="'insurances.' + index + '.speciality'">
-                      <el-select v-model="insurance.speciality" placeholder="Select speciality" style="width: 100%">
-                        <el-option label="General" value="General" />
-                        <el-option label="Cardiac" value="Cardiac" />
-                        <el-option label="Neurological" value="Neurological" />
-                        <el-option label="Pediatric" value="Pediatric" />
-                      </el-select>
-                    </el-form-item>
-                  </el-col>
-                </el-row>
-                
-                <el-row :gutter="20">
-                  <el-col :span="8">
-                    <el-form-item :label="'Insurance Price'" :prop="'insurances.' + index + '.price'">
-                      <el-input-number v-model="insurance.price" :min="0" :precision="2" :step="0.01" />
-                    </el-form-item>
-                  </el-col>
+                  <div class="form-section">
+                    <div class="form-label">Medicine Specialties</div>
+                    <div class="tags-input-container">
+                      <div class="tags-wrapper">
+                        <el-tag
+                          v-for="(specialty, spIndex) in insurance.specialties"
+                          :key="specialty"
+                          closable
+                          @close="removeSpecialty(index, spIndex)"
+                          size="small"
+                          effect="light"
+                          class="specialty-tag"
+                        >
+                          {{ specialty }}
+                        </el-tag>
+                      </div>
+                      <div class="tag-input-wrapper">
+                        <el-autocomplete
+                          v-model="specialtyInputs[index]"
+                          :fetch-suggestions="querySpecialtySearch"
+                          placeholder="Add specialty"
+                          @select="(item) => handleSelectSpecialty(item, index)"
+                          @keyup.enter="() => addSpecialty(index)"
+                          class="tag-input"
+                          :trigger-on-focus="false"
+                        >
+                          <template #default="{ item }">
+                            <div>{{ item.value }}</div>
+                          </template>
+                        </el-autocomplete>
+                        <el-button 
+                          size="small" 
+                          @click="addSpecialty(index)"
+                        >
+                          Add
+                        </el-button>
+                      </div>
+                    </div>
+                  </div>
                   
-                  <el-col :span="8">
-                    <el-form-item :label="'Percentage'" :prop="'insurances.' + index + '.percentage'">
-                      <el-input-number v-model="insurance.percentage" :min="0" :max="100" />
-                    </el-form-item>
-                  </el-col>
+                  <div class="form-section">
+                    <div class="table-heading">
+                      <div class="table-heading-item">Coverage Details</div>
+                    </div>
+                    
+                    <el-row :gutter="20">
+                      <el-col :span="8">
+                        <div class="compact-form-item">
+                          <div class="form-label">Insurance Price</div>
+                          <el-input-number 
+                            v-model="insurance.price" 
+                            :min="0" 
+                            :precision="2" 
+                            :step="0.01"
+                            @change="() => updateCoverageAmount(index)"
+                            style="width: 100%"
+                          />
+                        </div>
+                      </el-col>
+                      
+                      <el-col :span="8">
+                        <div class="compact-form-item">
+                          <div class="form-label">Coverage %</div>
+                          <el-input-number 
+                            v-model="insurance.percentage" 
+                            :min="0" 
+                            :max="100"
+                            @change="() => updateCoverageAmount(index)"
+                            style="width: 100%"
+                          />
+                          <p class="form-help" v-if="insurance.price > 0 && insurance.percentage > 0">
+                            Coverage: {{ insurance.coverageAmount }}
+                          </p>
+                        </div>
+                      </el-col>
+                      
+                      <el-col :span="8">
+                        <div class="compact-form-item">
+                          <div class="form-label">Government Share</div>
+                          <el-input-number 
+                            v-model="insurance.share" 
+                            :min="0" 
+                            :precision="2" 
+                            :step="0.01"
+                            @change="() => updateCoverageAmount(index)"
+                            style="width: 100%"
+                          />
+                        </div>
+                      </el-col>
+                    </el-row>
+                  </div>
                   
-                  <el-col :span="8">
-                    <el-form-item :label="'Insurance Share'" :prop="'insurances.' + index + '.share'">
-                      <el-input-number v-model="insurance.share" :min="0" :precision="2" :step="0.01" />
-                    </el-form-item>
-                  </el-col>
-                </el-row>
-                
-                <el-row :gutter="20">
-                  <el-col :span="8">
-                    <el-form-item :label="'ARZ'" :prop="'insurances.' + index + '.arz'">
-                      <el-input-number v-model="insurance.arz" :min="0" :precision="2" :step="0.01" />
-                    </el-form-item>
-                  </el-col>
-                  
-                  <el-col :span="8">
-                    <el-form-item :label="'Total'" :prop="'insurances.' + index + '.total'">
-                      <el-input-number v-model="insurance.total" :min="0" :precision="2" :step="0.01" />
-                    </el-form-item>
-                  </el-col>
-                </el-row>
-                
-                <el-row :gutter="20">
-                  <el-col :span="12">
-                    <el-form-item :label="'Maximum Number'" :prop="'insurances.' + index + '.numMax'">
-                      <el-input-number v-model="insurance.numMax" :min="0" />
-                    </el-form-item>
-                  </el-col>
-                  
-                  <el-col :span="12">
-                    <el-form-item :label="'Maximum Age'" :prop="'insurances.' + index + '.ageMax'">
-                      <el-input-number v-model="insurance.ageMax" :min="0" :max="120" />
-                    </el-form-item>
-                  </el-col>
-                </el-row>
-                
-                <el-row :gutter="20">
-                  <el-col :span="12">
-                    <el-form-item :label="'Barcode Required'" :prop="'insurances.' + index + '.barcodeRequired'">
-                      <el-switch v-model="insurance.barcodeRequired" />
-                    </el-form-item>
-                  </el-col>
-                  
-                  <el-col :span="12">
-                    <el-form-item :label="'Hospital Required'" :prop="'insurances.' + index + '.hospitalRequired'">
-                      <el-switch v-model="insurance.hospitalRequired" />
-                    </el-form-item>
-                  </el-col>
-                </el-row>
+                  <div class="form-section">
+                    <div class="table-heading">
+                      <div class="table-heading-item">Requirements & Limits</div>
+                    </div>
+                    
+                    <el-row :gutter="20">
+                      <el-col :span="8">
+                        <div class="compact-form-item">
+                          <div class="form-label">Total Coverage</div>
+                          <el-input-number 
+                            v-model="insurance.total" 
+                            :min="0" 
+                            :precision="2" 
+                            :step="0.01" 
+                            disabled
+                            style="width: 100%"
+                          />
+                          <p class="form-help" v-if="insurance.total > 0">
+                            Ins ({{ insurance.coverageAmount }}) + Gov ({{ insurance.share }})
+                          </p>
+                        </div>
+                      </el-col>
+                      
+                      <el-col :span="8">
+                        <div class="compact-form-item">
+                          <div class="form-label">Maximum Number</div>
+                          <el-input-number 
+                            v-model="insurance.numMax" 
+                            :min="0"
+                            style="width: 100%"
+                          />
+                          <p class="form-help">Max units per prescription</p>
+                        </div>
+                      </el-col>
+                      
+                      <el-col :span="8">
+                        <div class="compact-form-item">
+                          <div class="form-label">Maximum Age</div>
+                          <el-input-number 
+                            v-model="insurance.ageMax" 
+                            :min="0" 
+                            :max="120"
+                            style="width: 100%"
+                          />
+                          <p class="form-help">Max patient age</p>
+                        </div>
+                      </el-col>
+                    </el-row>
+                    
+                    <el-row :gutter="20" style="margin-top: 20px;">
+                      <el-col :span="12">
+                        <div class="compact-form-item">
+                          <div class="form-label">Barcode Required</div>
+                          <el-switch v-model="insurance.barcodeRequired" />
+                          <p class="form-help">Requires barcode verification</p>
+                        </div>
+                      </el-col>
+                      
+                      <el-col :span="12">
+                        <div class="compact-form-item">
+                          <div class="form-label">Hospital Required</div>
+                          <el-switch v-model="insurance.hospitalRequired" />
+                          <p class="form-help">Only in hospital settings</p>
+                        </div>
+                      </el-col>
+                    </el-row>
+                  </div>
+                </div>
               </div>
             </div>
           </el-form>
@@ -334,7 +433,7 @@
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
+import { ref, reactive, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useMedicinesStore } from '@/store/medicines'
 import { ElMessage } from 'element-plus'
@@ -376,12 +475,13 @@ const medicineForm = reactive({
   ],
   insurances: [
     {
-      type: 'Basic Insurance',
-      speciality: 'General',
+      insuranceId: null,
+      insuranceName: '',
+      specialties: [],
       price: 0,
       percentage: 0,
+      coverageAmount: 0,
       share: 0,
-      arz: 0,
       total: 0,
       numMax: 0,
       ageMax: 0,
@@ -450,24 +550,138 @@ const removeLocation = (batchIndex, locationIndex) => {
 // Methods for Insurance
 const addNewInsurance = () => {
   medicineForm.insurances.push({
-    type: 'Basic Insurance',
-    speciality: 'General',
+    insuranceId: null,
+    insuranceName: '',
+    specialties: [],
     price: 0,
     percentage: 0,
+    coverageAmount: 0,
     share: 0,
-    arz: 0,
     total: 0,
     numMax: 0,
     ageMax: 0,
     barcodeRequired: false,
     hospitalRequired: false
   })
+  
+  // Initialize specialty input for the new insurance entry
+  specialtyInputs[medicineForm.insurances.length - 1] = '';
 }
 
 const removeInsurance = (index) => {
   medicineForm.insurances.splice(index, 1)
   if (medicineForm.insurances.length === 0) {
     addNewInsurance()
+  }
+}
+
+// Add the same insurance provider data
+const availableInsurances = [
+  {
+    id: 1,
+    name: 'BPJS Health',
+    description: 'National health insurance',
+    coveragePercentage: 80
+  },
+  {
+    id: 2,
+    name: 'Prudential Health',
+    description: 'Private health insurance',
+    coveragePercentage: 90
+  },
+  {
+    id: 3,
+    name: 'Allianz Care',
+    description: 'Corporate health insurance',
+    coveragePercentage: 85
+  }
+]
+
+// Add specialty suggestions
+const specialtySuggestions = [
+  'Cardiology',
+  'Dermatology',
+  'Endocrinology',
+  'Gastroenterology',
+  'General Medicine',
+  'Gynecology',
+  'Neurology',
+  'Oncology',
+  'Ophthalmology',
+  'Orthopedics',
+  'Pediatrics',
+  'Psychiatry',
+  'Pulmonology',
+  'Rheumatology',
+  'Urology',
+  'Pharmacist'
+]
+
+// Replace specialtyInputs implementation to use an array instead of object for better reactivity
+const specialtyInputs = reactive([]);
+
+// Initialize specialtyInputs array when component is mounted
+// Since we're in composition API, this doesn't need to be in an onMounted hook for AddMedicineView
+// Initialize empty specialty inputs for existing insurance entries
+medicineForm.insurances.forEach((_, index) => {
+  specialtyInputs[index] = '';
+});
+
+// Update the addSpecialty function to match DoctorsListModal.vue
+const addSpecialty = (index, value = null) => {
+  const specialty = value || specialtyInputs[index];
+  if (specialty && !medicineForm.insurances[index].specialties.includes(specialty)) {
+    medicineForm.insurances[index].specialties.push(specialty);
+    
+    // Add to suggestions if it's not already there
+    if (!specialtySuggestions.includes(specialty)) {
+      specialtySuggestions.push(specialty);
+    }
+  }
+  specialtyInputs[index] = '';
+}
+
+// Update handleSelectSpecialty to match DoctorsListModal.vue implementation
+const handleSelectSpecialty = (item, index) => {
+  addSpecialty(index, item.value);
+}
+
+// Update removeSpecialty to match removeTag in DoctorsListModal.vue
+const removeSpecialty = (insuranceIndex, specialtyIndex) => {
+  const tag = medicineForm.insurances[insuranceIndex].specialties[specialtyIndex];
+  medicineForm.insurances[insuranceIndex].specialties = medicineForm.insurances[insuranceIndex].specialties.filter(item => item !== tag);
+}
+
+// Add function to query specialty suggestions
+const querySpecialtySearch = (queryString, callback) => {
+  const results = queryString
+    ? specialtySuggestions.filter(item => {
+        return item.toLowerCase().includes(queryString.toLowerCase())
+      })
+    : specialtySuggestions
+  
+  callback(results.map(item => ({ value: item })))
+}
+
+// Add function to update coverage amount whenever price or percentage changes
+const updateCoverageAmount = (insuranceIndex) => {
+  const insurance = medicineForm.insurances[insuranceIndex]
+  
+  // Calculate coverage amount based on price and percentage
+  insurance.coverageAmount = (insurance.price * insurance.percentage / 100).toFixed(2)
+  
+  // Update total coverage (insurance + government)
+  insurance.total = parseFloat(insurance.coverageAmount) + parseFloat(insurance.share || 0)
+}
+
+const handleInsuranceSelect = (insuranceId, index) => {
+  const selectedInsurance = availableInsurances.find(ins => ins.id === insuranceId)
+  if (selectedInsurance) {
+    medicineForm.insurances[index].insuranceName = selectedInsurance.name
+    medicineForm.insurances[index].percentage = selectedInsurance.coveragePercentage
+    
+    // Update coverage amount
+    updateCoverageAmount(index)
   }
 }
 
@@ -593,5 +807,115 @@ const cancel = () => {
   display: flex;
   justify-content: flex-end;
   gap: 10px;
+}
+
+.insurance-entries {
+  margin-top: 20px;
+}
+
+.insurance-content {
+  padding: 0 10px;
+  background-color: #fafafa;
+  border-radius: 4px;
+}
+
+.form-section {
+  margin-bottom: 20px;
+  padding: 15px;
+  background-color: #fff;
+  border: 1px solid #ebeef5;
+  border-radius: 4px;
+}
+
+.form-section-title {
+  margin-top: 0;
+  margin-bottom: 20px;
+  font-size: 1rem;
+  color: var(--primary-color);
+  font-weight: 500;
+}
+
+.table-heading {
+  display: flex;
+  gap: 20px;
+  margin-bottom: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #ebeef5;
+}
+
+.table-heading-item {
+  font-weight: 500;
+  color: #606266;
+  font-size: 0.9rem;
+}
+
+.form-label {
+  font-weight: 500;
+  color: #606266;
+  margin-bottom: 5px;
+  display: block;
+}
+
+.form-help {
+  font-size: 0.75rem;
+  color: #909399;
+  margin-top: 5px;
+}
+
+.tags-input-container {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.tags-wrapper {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-height: 32px;
+  padding: 4px;
+  border: 1px solid #dcdfe6;
+  border-radius: 4px;
+  background-color: #fff;
+}
+
+.tag-input-wrapper {
+  display: flex;
+  gap: 10px;
+}
+
+.tag-input {
+  width: 100%;
+}
+
+.specialty-tag {
+  margin-right: 4px;
+  margin-bottom: 4px;
+}
+
+.add-button {
+  background-color: #1890ff;
+  border-color: #1890ff;
+  color: white;
+}
+
+.add-button:hover {
+  background-color: #40a9ff;
+  border-color: #40a9ff;
+}
+
+.remove-button {
+  background-color: #ff4d4f;
+  border-color: #ff4d4f;
+  color: white;
+}
+
+.remove-button:hover {
+  background-color: #ff7875;
+  border-color: #ff7875;
+}
+
+.compact-form-item {
+  margin-bottom: 12px;
 }
 </style> 
