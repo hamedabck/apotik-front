@@ -100,7 +100,7 @@ const activeMenu = computed(() => {
 <style scoped>
 .sidebar {
   width: 250px;
-  background-color: var(--white);
+  background-color: #3F72AF;
   box-shadow: var(--shadow);
   z-index: 10;
   min-height: 100vh;
@@ -114,7 +114,9 @@ const activeMenu = computed(() => {
   display: flex;
   align-items: center;
   gap: 10px;
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: 1px solid rgba(244, 238, 255, 0.2);
+  background-color: #3F72AF;
+  color: #F4EEFF;
 }
 
 .logo {
@@ -127,20 +129,56 @@ const activeMenu = computed(() => {
   margin: 0;
   font-size: 1.2rem;
   font-weight: 600;
-  color: var(--primary-color);
+  color: #F4EEFF;
 }
 
 .sidebar-search {
   padding: 15px;
+  background-color: #3F72AF;
+}
+
+.sidebar-search :deep(.el-input) {
+  background-color: #3F72AF;
+}
+
+.sidebar-search :deep(.el-input__inner) {
+  background-color: #F4EEFF;
+  color: #F4EEFF;
+}
+
+.sidebar-search :deep(.el-input__inner::placeholder) {
+  color: rgba(1, 0, 9, 0.7);
 }
 
 .sidebar-nav {
   flex: 1 1 auto;
   margin-top: 10px;
+  background-color: #3F72AF;
 }
 
 .sidebar-menu {
   border-right: none;
+}
+
+.sidebar-menu :deep(.el-menu-item) {
+  color: #F4EEFF !important;
+}
+
+.sidebar-menu :deep(.el-menu-item:hover) {
+  background-color: rgba(244, 238, 255, 0.1) !important;
+}
+
+.sidebar-menu :deep(.el-menu-item.is-active) {
+  background-color: rgba(244, 238, 255, 0.15) !important;
+  color: #F4EEFF !important;
+}
+
+.sidebar-menu :deep(.el-sub-menu__title) {
+  color: #F4EEFF !important;
+}
+
+.sidebar-menu :deep(.el-sub-menu__title:hover) {
+  background-color: rgba(244, 238, 255, 0.1) !important;
 }
 
 .user-profile {
@@ -149,8 +187,8 @@ const activeMenu = computed(() => {
   display: flex;
   align-items: center;
   gap: 10px;
-  border-top: 1px solid var(--border-color);
-  background-color: var(--white);
+  border-top: 1px solid rgba(244, 238, 255, 0.2);
+  background-color: #3F72AF;
   margin-top: auto;
 }
 
@@ -169,12 +207,13 @@ const activeMenu = computed(() => {
   margin: 0;
   font-size: 0.9rem;
   font-weight: 600;
+  color: #F4EEFF;
 }
 
 .user-role {
   margin: 0;
   font-size: 0.8rem;
-  color: var(--text-secondary);
+  color: rgba(244, 238, 255, 0.7);
 }
 
 @media (max-width: 768px) {
