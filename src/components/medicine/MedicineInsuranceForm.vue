@@ -168,81 +168,80 @@
       </div>
       
       <!-- Insurance Table -->
-      <div class="insurance-table-container" v-if="modelValue.length > 0">
+      <div v-if="modelValue.length > 0" class="insurance-table-wrapper">
         <h4 class="table-title">Insurance Coverage Table</h4>
-        <div class="table-scroll-container">
-          <el-table 
-            :data="modelValue" 
-            stripe 
-            border
-            table-layout="fixed"
-            class="insurance-table"
-          >
-            <el-table-column prop="insuranceName" label="Provider" width="160" />
-            <el-table-column prop="specialties" label="Specialties" width="200">
-              <template #default="scope">
-                <el-tag
-                  v-for="(specialty, index) in scope.row.specialties"
-                  :key="index"
-                  size="small"
-                  effect="light"
-                  style="margin-right: 5px; margin-bottom: 5px;"
+        <el-table 
+          :data="modelValue" 
+          stripe 
+          border
+          table-layout="fixed"
+          class="insurance-table"
+          height="600"
+        >
+          <el-table-column prop="insuranceName" label="Provider" width="160" />
+          <el-table-column prop="specialties" label="Specialties" width="150">
+            <template #default="scope">
+              <el-tag
+                v-for="(specialty, index) in scope.row.specialties"
+                :key="index"
+                size="small"
+                effect="light"
+                style="margin-right: 5px; margin-bottom: 5px;"
+              >
+                {{ specialty }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="price" label="Price" width="100" />
+          <el-table-column prop="percentage" label="rate %" width="80" />
+          <el-table-column prop="coverageAmount" label="Coverage Amount" width="150" />
+          <el-table-column prop="share" label="ARZ Share" width="100" />
+          <el-table-column prop="total" label="Total" width="100" />
+          <el-table-column prop="numMax" label="Max Units" width="100" />
+          <el-table-column prop="ageMax" label="Max Age" width="100" />
+          <el-table-column label="Needs" width="150">
+            <template #default="scope">
+              <div class="needs-container">
+                <el-tag 
+                  size="small" 
+                  :type="scope.row.barcodeRequired ? 'danger' : 'info'"
+                  class="requirement-tag"
                 >
-                  {{ specialty }}
+                  {{ scope.row.barcodeRequired ? 'Barcode Required' : 'No Barcode' }}
                 </el-tag>
-              </template>
-            </el-table-column>
-            <el-table-column prop="price" label="Price" width="100" />
-            <el-table-column prop="percentage" label="rate %" width="80" />
-            <el-table-column prop="coverageAmount" label="Coverage Amount" width="150" />
-            <el-table-column prop="share" label="ARZ Share" width="100" />
-            <el-table-column prop="total" label="Total" width="100" />
-            <el-table-column prop="numMax" label="Max Units" width="100" />
-            <el-table-column prop="ageMax" label="Max Age" width="100" />
-            <el-table-column label="Needs" width="150">
-              <template #default="scope">
-                <div class="needs-container">
-                  <el-tag 
-                    size="small" 
-                    :type="scope.row.barcodeRequired ? 'danger' : 'info'"
-                    class="requirement-tag"
-                  >
-                    {{ scope.row.barcodeRequired ? 'Barcode Required' : 'No Barcode' }}
-                  </el-tag>
-                  <el-tag 
-                    size="small" 
-                    :type="scope.row.hospitalRequired ? 'danger' : 'info'"
-                    class="requirement-tag"
-                  >
-                    {{ scope.row.hospitalRequired ? 'Hospital Only' : 'No Hospital' }}
-                  </el-tag>
-                </div>
-              </template>
-            </el-table-column>
-            <el-table-column label="Operations" width="140">
-              <template #default="scope">
-                <div class="operations-container">
-                  <el-button
-                    size="small"
-                    @click="editInsurance(scope.$index)"
-                    type="primary"
-                    plain
-                  >
-                    Edit
-                  </el-button>
-                  <el-button
-                    size="small"
-                    type="danger"
-                    plain
-                    @click="removeInsurance(scope.$index)"
-                  >
-                    Delete
-                  </el-button>
-                </div>
-              </template>
-            </el-table-column>
-          </el-table>
-        </div>
+                <el-tag 
+                  size="small" 
+                  :type="scope.row.hospitalRequired ? 'danger' : 'info'"
+                  class="requirement-tag"
+                >
+                  {{ scope.row.hospitalRequired ? 'Hospital Only' : 'No Hospital' }}
+                </el-tag>
+              </div>
+            </template>
+          </el-table-column>
+          <el-table-column label="Operations" width="140" fixed="right">
+            <template #default="scope">
+              <div class="operations-container">
+                <el-button
+                  size="small"
+                  @click="editInsurance(scope.$index)"
+                  type="primary"
+                  plain
+                >
+                  Edit
+                </el-button>
+                <el-button
+                  size="small"
+                  type="danger"
+                  plain
+                  @click="removeInsurance(scope.$index)"
+                >
+                  Delete
+                </el-button>
+              </div>
+            </template>
+          </el-table-column>
+        </el-table>
       </div>
       
       <div class="no-data-message" v-else>
@@ -552,27 +551,31 @@ const removeInsurance = (index) => {
   overflow: hidden;
 }
 
-.insurance-table-container {
+.insurance-table-wrapper {
   margin-bottom: 20px;
-  max-width: 1190px;
+  max-width: 1200px;
   width: 100%;
-  overflow: hidden;
+  position: relative;
+  height: calc(100% - 40px);
+  min-height: 600px;
 }
 
-.table-scroll-container {
-  width: 100%;
-  max-height: 400px;
-  overflow-y: auto;
-  overflow-x: auto;
-  border: 1px solid #ebeef5;
+.insurance-table {
+  width: 100% !important;
+  --el-table-border-color: #ebeef5;
   border-radius: 4px;
+  height: 100%;
 }
 
 /* Table layout fixes */
 :deep(.el-table) {
   margin: 0 !important;
-  width: 1280px !important;
-  table-layout: fixed !important;
+  height: 100%;
+}
+
+:deep(.el-table__body-wrapper) {
+  overflow-y: auto !important;
+  overflow-x: auto !important;
 }
 
 :deep(.el-table__header-wrapper) {
@@ -582,91 +585,66 @@ const removeInsurance = (index) => {
   background: #fff;
 }
 
-:deep(.el-table__body-wrapper) {
-  overflow: visible !important;
-}
-
-:deep(.el-table__body),
-:deep(.el-table__header) {
-  width: 1280px !important;
-  table-layout: fixed !important;
-}
-
 :deep(.el-table__header th) {
   background-color: #f5f7fa !important;
   border-bottom: 1px solid #ebeef5;
-}
-
-:deep(.el-table__row) {
-  width: 100%;
 }
 
 :deep(.el-table__cell) {
   text-align: center;
 }
 
-/* Scrollbar styling */
-.table-scroll-container::-webkit-scrollbar {
-  width: 12px;
-  height: 12px;
+/* Custom Scrollbar Styling */
+:deep(.el-table__body-wrapper::-webkit-scrollbar) {
+  width: 16px;
+  height: 16px;
 }
 
-.table-scroll-container::-webkit-scrollbar-track {
+:deep(.el-table__body-wrapper::-webkit-scrollbar-track) {
   background: #f0f2f5;
-  border-radius: 6px;
+  border-radius: 10px;
 }
 
-.table-scroll-container::-webkit-scrollbar-thumb {
+:deep(.el-table__body-wrapper::-webkit-scrollbar-thumb) {
   background-color: #409EFF;
-  border-radius: 6px;
+  border: 4px solid #f0f2f5;
+  border-radius: 10px;
+  min-height: 50px;
+}
+
+:deep(.el-table__body-wrapper::-webkit-scrollbar-thumb:hover) {
+  background-color: #66b1ff;
   border: 3px solid #f0f2f5;
 }
 
-/* .table-scroll-container::-webkit-scrollbar-thumb:horizontal {
-  background-color: #409EFF;
-  border: 3px solid #f0f2f5;
-} */
+:deep(.el-table__body-wrapper::-webkit-scrollbar-corner) {
+  background-color: #f0f2f5;
+  border-bottom-right-radius: 4px;
+}
 
-/* For Firefox */
-.table-scroll-container {
-  scrollbar-width: thin;
+/* Firefox Scrollbar */
+:deep(.el-table__body-wrapper) {
+  scrollbar-width: auto;
   scrollbar-color: #409EFF #f0f2f5;
-  max-height: 400px;
-  overflow-y: auto;
 }
 
-/* Scroll shadows */
-.table-scroll-container::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  width: 5px;
-  pointer-events: none;
-  box-shadow: inset -5px 0 5px -5px rgba(0, 0, 0, 0.15);
+/* Ensure horizontal scrollbar stays visible */
+:deep(.el-table__body-wrapper:hover) {
+  overflow-x: auto !important;
 }
 
-/* .table-scroll-container::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  bottom: 0;
-  width: 5px;
-  pointer-events: none;
-  box-shadow: inset 5px 0 5px -5px rgba(0, 0, 0, 0.15);
-} */
+/* Handle both scrollbars corner */
+:deep(.el-scrollbar__bar.is-horizontal) {
+  height: 16px;
+}
+
+:deep(.el-scrollbar__bar.is-vertical) {
+  width: 16px;
+}
 
 .operations-container {
   display: flex;
   gap: 8px;
   justify-content: center;
-}
-:deep(.el-table__header-wrapper) {
-  position: sticky;
-  top: 0;
-  z-index: 3;
-  background-color: white;
 }
 </style> 
