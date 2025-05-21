@@ -98,6 +98,7 @@
 import { ref, computed } from 'vue'
 import BaseModal from '../BaseModal.vue'
 import DataTable from '../DataTable.vue'
+import { useInsuranceStore } from '@/stores/insuranceStore'
 
 const props = defineProps({
   modelValue: {
@@ -107,6 +108,7 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['update:modelValue', 'close'])
+const insuranceStore = useInsuranceStore()
 
 // Table configuration
 const columns = [
@@ -116,27 +118,8 @@ const columns = [
   { key: 'coveragePercentage', label: 'Coverage %' }
 ]
 
-// Dummy data
-const insurances = ref([
-  {
-    id: 1,
-    name: 'BPJS Health',
-    description: 'National health insurance',
-    coveragePercentage: 80
-  },
-  {
-    id: 2,
-    name: 'Prudential Health',
-    description: 'Private health insurance',
-    coveragePercentage: 90
-  },
-  {
-    id: 3,
-    name: 'Allianz Care',
-    description: 'Corporate health insurance',
-    coveragePercentage: 85
-  }
-])
+// Use store data instead of local data
+const insurances = computed(() => insuranceStore.insurances)
 
 // Form state
 const showForm = ref(false)
@@ -184,17 +167,11 @@ const saveItem = () => {
 
   if (editingItem.value) {
     // Update existing item
-    const index = insurances.value.findIndex(item => item.id === editingItem.value.id)
-    if (index !== -1) {
-      insurances.value[index] = {
-        ...insurances.value[index],
-        ...insuranceData
-      }
-    }
+    insuranceStore.updateInsurance(editingItem.value.id, insuranceData)
   } else {
     // Add new item
     const newId = Math.max(...insurances.value.map(item => item.id), 0) + 1
-    insurances.value.push({
+    insuranceStore.addInsurance({
       id: newId,
       ...insuranceData
     })
@@ -204,7 +181,7 @@ const saveItem = () => {
 
 const confirmDelete = (item) => {
   if (confirm('Are you sure you want to delete this insurance?')) {
-    insurances.value = insurances.value.filter(i => i.id !== item.id)
+    insuranceStore.deleteInsurance(item.id)
   }
 }
 </script>

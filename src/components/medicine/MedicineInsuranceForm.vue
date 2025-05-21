@@ -176,7 +176,7 @@
           border
           table-layout="fixed"
           class="insurance-table"
-          height="600"
+          :max-height="500"
         >
           <el-table-column prop="insuranceName" label="Provider" width="160" />
           <el-table-column prop="specialties" label="Specialties" width="150">
@@ -252,7 +252,9 @@
 </template>
 
 <script setup>
-import { ref, reactive, defineProps, defineEmits } from 'vue'
+import { ref, reactive, defineProps, defineEmits, computed } from 'vue'
+import { ElMessage } from 'element-plus'
+import { useInsuranceStore } from '@/stores/insuranceStore'
 
 const props = defineProps({
   modelValue: {
@@ -265,28 +267,10 @@ const emit = defineEmits(['update:modelValue'])
 
 const specialtyInput = ref('')
 const isEditing = ref(false)
+const insuranceStore = useInsuranceStore()
 
-// Add the same insurance provider data
-const availableInsurances = [
-  {
-    id: 1,
-    name: 'BPJS Health',
-    description: 'National health insurance',
-    coveragePercentage: 80
-  },
-  {
-    id: 2,
-    name: 'Prudential Health',
-    description: 'Private health insurance',
-    coveragePercentage: 90
-  },
-  {
-    id: 3,
-    name: 'Allianz Care',
-    description: 'Corporate health insurance',
-    coveragePercentage: 85
-  }
-]
+// Get insurance data from the store
+const availableInsurances = computed(() => insuranceStore.insurances)
 
 // Add specialty suggestions
 const specialtySuggestions = [
@@ -344,7 +328,7 @@ const updateCurrentCoverageAmount = () => {
 }
 
 const handleCurrentInsuranceSelect = (insuranceId) => {
-  const selectedInsurance = availableInsurances.find(ins => ins.id === insuranceId)
+  const selectedInsurance = availableInsurances.value.find(ins => ins.id === insuranceId)
   if (selectedInsurance) {
     currentInsurance.insuranceName = selectedInsurance.name
     currentInsurance.percentage = selectedInsurance.coveragePercentage

@@ -98,6 +98,7 @@
 import { ref, computed } from 'vue'
 import BaseModal from '../BaseModal.vue'
 import DataTable from '../DataTable.vue'
+import { useStorageStore } from '@/stores/storageStore'
 
 const props = defineProps({
   modelValue: {
@@ -107,6 +108,7 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['update:modelValue', 'close'])
+const storageStore = useStorageStore()
 
 // Table configuration
 const columns = [
@@ -116,27 +118,8 @@ const columns = [
   { key: 'description', label: 'Description' }
 ]
 
-// Dummy data
-const storages = ref([
-  {
-    id: 1,
-    name: 'Main Storage',
-    type: 'storage',
-    description: 'Primary storage area for bulk inventory'
-  },
-  {
-    id: 2,
-    name: 'Shelf A1',
-    type: 'shelf',
-    description: 'Front shelf for common medications'
-  },
-  {
-    id: 3,
-    name: 'Refrigerated Storage',
-    type: 'storage',
-    description: 'Temperature controlled storage for sensitive medications'
-  }
-])
+// Use store data instead of local data
+const storages = computed(() => storageStore.storages)
 
 // Form state
 const showForm = ref(false)
@@ -184,17 +167,11 @@ const saveItem = () => {
 
   if (editingItem.value) {
     // Update existing item
-    const index = storages.value.findIndex(item => item.id === editingItem.value.id)
-    if (index !== -1) {
-      storages.value[index] = {
-        ...storages.value[index],
-        ...storageData
-      }
-    }
+    storageStore.updateStorage(editingItem.value.id, storageData)
   } else {
     // Add new item
     const newId = Math.max(...storages.value.map(item => item.id), 0) + 1
-    storages.value.push({
+    storageStore.addStorage({
       id: newId,
       ...storageData
     })
@@ -204,7 +181,7 @@ const saveItem = () => {
 
 const confirmDelete = (item) => {
   if (confirm('Are you sure you want to delete this storage/shelf?')) {
-    storages.value = storages.value.filter(i => i.id !== item.id)
+    storageStore.deleteStorage(item.id)
   }
 }
 </script>

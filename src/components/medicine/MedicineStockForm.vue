@@ -51,6 +51,17 @@
                 class="compact-input"
               />
             </div>
+            <div class="form-group">
+              <label class="compact-label">Total Quantity</label>
+              <el-input 
+                v-model="currentBatch.quantity" 
+                type="number"
+                disabled
+                placeholder="Total quantity"
+                class="compact-input"
+              />
+              <span class="help-text">Sum of all location quantities</span>
+            </div>
           </div>
           
           <!-- Second row: Locations -->
@@ -108,17 +119,7 @@
           
           <!-- Third row: Total Quantity -->
           <div class="form-row">
-            <div class="form-group">
-              <label class="compact-label">Total Quantity</label>
-              <el-input 
-                v-model="currentBatch.quantity" 
-                type="number"
-                disabled
-                placeholder="Total quantity"
-                class="compact-input"
-              />
-              <span class="help-text">Sum of all location quantities</span>
-            </div>
+
           </div>
         </div>
       </div>
@@ -179,8 +180,9 @@
 </template>
 
 <script setup>
-import { ref, reactive, defineProps, defineEmits } from 'vue'
+import { ref, reactive, defineProps, defineEmits, computed } from 'vue'
 import { ElMessage } from 'element-plus'
+import { useStorageStore } from '@/stores/storageStore'
 
 const props = defineProps({
   modelValue: {
@@ -191,18 +193,10 @@ const props = defineProps({
 
 const emit = defineEmits(['update:modelValue'])
 const isEditing = ref(false)
+const storageStore = useStorageStore()
 
-// Available storage locations
-const availableStorages = [
-  { id: 1, name: 'Main Warehouse' },
-  { id: 2, name: 'Secondary Storage' },
-  { id: 3, name: 'Cold Storage' },
-  { id: 4, name: 'Secure Storage' },
-  { id: 5, name: 'Shelf A1' },
-  { id: 6, name: 'Shelf A2' },
-  { id: 7, name: 'Shelf B1' },
-  { id: 8, name: 'Shelf B2' }
-]
+// Get available storage locations from the store
+const availableStorages = computed(() => storageStore.storages)
 
 const currentBatch = reactive({
   batchNumber: '',
@@ -211,7 +205,7 @@ const currentBatch = reactive({
   quantity: 0,
   locations: [
     {
-      warehouse: 'Main Warehouse',
+      warehouse: availableStorages.value[0]?.name || '',
       quantity: 0
     }
   ]
@@ -273,7 +267,7 @@ const addNewBatchToTable = () => {
     quantity: 0,
     locations: [
       {
-        warehouse: 'Main Warehouse',
+        warehouse: availableStorages.value[0]?.name || '',
         quantity: 0
       }
     ]
