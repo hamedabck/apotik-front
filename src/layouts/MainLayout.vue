@@ -12,11 +12,6 @@
         </div>
       </div>
       
-      <!-- Search input -->
-      <div class="sidebar-search" v-if="!isCollapsed">
-        <el-input placeholder="Search..." prefix-icon="el-icon-search"></el-input>
-      </div>
-      
       <!-- Navigation menu -->
       <nav class="sidebar-nav">
         <el-menu 
@@ -28,59 +23,78 @@
           text-color="#F4EEFF"
           active-text-color="#F4EEFF">
           
-          <el-menu-item index="/">
-            <el-icon><i-ep-house /></el-icon>
-            <template #title>Dashboard</template>
-          </el-menu-item>
-          
-          <el-menu-item index="/medicines">
-            <el-icon><i-ep-medicine-box /></el-icon>
-            <template #title>Medicines</template>
-          </el-menu-item>
-          
-          <el-menu-item index="/medicines/add">
-            <el-icon><i-ep-plus /></el-icon>
-            <template #title>Add New Medicine</template>
-          </el-menu-item>
-          
-          <el-menu-item index="/stock-adjustment">
-            <el-icon><i-ep-edit /></el-icon>
-            <template #title>Stock Adjustment</template>
-          </el-menu-item>
-          
-          <el-menu-item index="/reporting">
-            <el-icon><i-ep-data-analysis /></el-icon>
-            <template #title>Reports</template>
-          </el-menu-item>
-
-          <el-sub-menu index="settings" popper-append-to-body>
-            <template #title>
-              <el-icon><i-ep-setting /></el-icon>
-              <span>Settings</span>
-            </template>
-            <el-menu-item index="/settings/financial">
-              <el-icon><i-ep-money /></el-icon>
-              <span>Financial Settings</span>
+          <!-- Dynamic menu items based on user role -->
+          <template v-for="item in filteredMenuItems" :key="item.index">
+            <!-- Regular menu item -->
+            <el-menu-item 
+              v-if="item.type !== 'submenu'" 
+              :index="item.index">
+              <el-icon>
+                <component :is="item.icon" />
+              </el-icon>
+              <template #title>{{ item.title }}</template>
             </el-menu-item>
-            <el-menu-item index="/settings/management">
-              <el-icon><i-ep-management /></el-icon>
-              <span>Management Settings</span>
-            </el-menu-item>
-            <el-menu-item index="/settings/users">
-              <el-icon><i-ep-user /></el-icon>
-              <span>User Settings</span>
-            </el-menu-item>
-          </el-sub-menu>
+            
+            <!-- Submenu -->
+            <el-sub-menu 
+              v-else 
+              :index="item.index" 
+              popper-append-to-body>
+              <template #title>
+                <el-icon>
+                  <component :is="item.icon" />
+                </el-icon>
+                <span>{{ item.title }}</span>
+              </template>
+              
+              <el-menu-item 
+                v-for="child in item.children" 
+                :key="child.index"
+                :index="child.index">
+                <el-icon>
+                  <component :is="child.icon" />
+                </el-icon>
+                <span>{{ child.title }}</span>
+              </el-menu-item>
+            </el-sub-menu>
+          </template>
         </el-menu>
       </nav>
       
       <!-- User profile -->
       <div class="user-profile">
-        <img src="@/assets/avatar.png" alt="User Avatar" class="avatar" />
-        <div class="user-info" v-if="!isCollapsed">
-          <h4 class="user-name">Hamed ABC</h4>
-          <p class="user-role">Administrator</p>
-        </div>
+        <el-dropdown @command="handleUserAction" trigger="click" placement="top-start">
+          <div class="user-profile-content">
+            <div class="avatar-container">
+              <el-avatar :size="36" :src="userAvatar">
+                <el-icon><i-ep-user /></el-icon>
+              </el-avatar>
+            </div>
+            <div class="user-info" v-if="!isCollapsed">
+              <h4 class="user-name">{{ authStore.user?.email || 'User' }}</h4>
+              <p class="user-role">{{ authStore.user?.pharmacy?.name || authStore.user?.pharmacy_name || 'No Pharmacy' }}</p>
+            </div>
+            <el-icon v-if="!isCollapsed" class="dropdown-icon">
+              <i-ep-arrow-up />
+            </el-icon>
+          </div>
+          <template #dropdown>
+            <el-dropdown-menu>
+              <el-dropdown-item command="profile">
+                <el-icon><i-ep-user /></el-icon>
+                Profile
+              </el-dropdown-item>
+              <el-dropdown-item command="settings" v-if="rolesStore.hasPermission('user_settings')">
+                <el-icon><i-ep-setting /></el-icon>
+                Settings
+              </el-dropdown-item>
+              <el-dropdown-item divided command="logout">
+                <el-icon><i-ep-switch-button /></el-icon>
+                Logout
+              </el-dropdown-item>
+            </el-dropdown-menu>
+          </template>
+        </el-dropdown>
       </div>
     </aside>
     
@@ -93,9 +107,15 @@
 
 <script setup>
 import { ref, computed } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
+import { useAuthStore } from '@/store/auth'
+import { useRolesStore } from '@/store/roles'
+import { ElMessage, ElMessageBox } from 'element-plus'
 
 const route = useRoute()
+const router = useRouter()
+const authStore = useAuthStore()
+const rolesStore = useRolesStore()
 const isCollapsed = ref(true)
 
 // Compute active menu item based on current route
@@ -103,8 +123,50 @@ const activeMenu = computed(() => {
   return route.path
 })
 
+// Get filtered menu items based on user role
+const filteredMenuItems = computed(() => {
+  return rolesStore.getFilteredMenuItems()
+})
+
+// User avatar placeholder
+const userAvatar = computed(() => {
+  // You can implement avatar logic here
+  return null // This will show the default icon
+})
+
 const toggleSidebar = () => {
   isCollapsed.value = !isCollapsed.value
+}
+
+const handleUserAction = async (command) => {
+  switch (command) {
+    case 'profile':
+      // Navigate to profile page (you can implement this)
+      ElMessage.info('Profile page coming soon!')
+      break
+    case 'settings':
+      router.push({ name: 'user-settings' })
+      break
+    case 'logout':
+      try {
+        await ElMessageBox.confirm(
+          'Are you sure you want to logout?',
+          'Confirm Logout',
+          {
+            confirmButtonText: 'Logout',
+            cancelButtonText: 'Cancel',
+            type: 'warning',
+          }
+        )
+        
+        authStore.logout()
+        ElMessage.success('Logged out successfully')
+        router.push({ name: 'Auth' })
+      } catch {
+        // User cancelled
+      }
+      break
+  }
 }
 </script>
 
@@ -220,8 +282,7 @@ const toggleSidebar = () => {
 .sidebar-nav {
   flex: 1 1 auto;
   margin-top: 10px;
-  overflow-y: auto;
-  overflow-x: hidden;
+  overflow: hidden;
 }
 
 .sidebar-menu {
@@ -307,19 +368,26 @@ const toggleSidebar = () => {
 
 .user-profile {
   padding: 15px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
   border-top: 1px solid rgba(255, 255, 255, 0.1);
   margin-top: auto;
 }
 
-.avatar {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  object-fit: cover;
-  border: 2px solid rgba(255, 255, 255, 0.5);
+.user-profile-content {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  padding: 5px;
+  border-radius: 8px;
+  transition: background-color 0.3s ease;
+  width: 100%;
+}
+
+.user-profile-content:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.avatar-container {
   flex-shrink: 0;
 }
 
@@ -334,12 +402,47 @@ const toggleSidebar = () => {
   font-size: 0.9rem;
   font-weight: 600;
   color: #fff;
+  text-overflow: ellipsis;
+  overflow: hidden;
 }
 
 .user-role {
   margin: 0;
   font-size: 0.75rem;
   color: rgba(255, 255, 255, 0.7);
+  text-overflow: ellipsis;
+  overflow: hidden;
+}
+
+.dropdown-icon {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+/* Dropdown menu styling */
+:deep(.el-dropdown-menu) {
+  background-color: var(--white);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+}
+
+:deep(.el-dropdown-menu__item) {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  color: var(--text-primary);
+}
+
+:deep(.el-dropdown-menu__item:hover) {
+  background-color: var(--background-color);
+  color: var(--primary-color);
+}
+
+:deep(.el-dropdown-menu__item .el-icon) {
+  font-size: 16px;
 }
 
 .main-content {

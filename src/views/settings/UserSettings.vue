@@ -43,19 +43,6 @@
         </template>
         <p class="settings-card-description">Manage employees, roles and permissions</p>
       </el-card>
-
-      <!-- Employee Salaries Card -->
-      <el-card shadow="hover" class="settings-card">
-        <template #header>
-          <div class="settings-card-header">
-            <h2>Employee Salaries</h2>
-            <el-button type="primary" @click="showEmployeeSalariesModal = true">
-              Manage
-            </el-button>
-          </div>
-        </template>
-        <p class="settings-card-description">Track and manage employee salaries, bonuses and deductions</p>
-      </el-card>
     </div>
 
     <!-- Modals -->
@@ -76,12 +63,6 @@
       @update:model-value="showEmployeesModal = $event"
       @close="showEmployeesModal = false"
     />
-
-    <employee-salaries-modal
-      :model-value="showEmployeeSalariesModal"
-      @update:model-value="showEmployeeSalariesModal = $event"
-      @close="showEmployeeSalariesModal = false"
-    />
   </div>
 </template>
 
@@ -90,13 +71,11 @@ import { ref } from 'vue'
 import DoctorsListModal from '@/components/settings/modals/DoctorsListModal.vue'
 import CustomersListModal from '@/components/settings/modals/CustomersListModal.vue'
 import EmployeesModal from '@/components/settings/modals/EmployeesModal.vue'
-import EmployeeSalariesModal from '@/components/settings/modals/EmployeeSalariesModal.vue'
 
 // Modal visibility states
 const showDoctorsListModal = ref(false)
 const showCustomersListModal = ref(false)
 const showEmployeesModal = ref(false)
-const showEmployeeSalariesModal = ref(false)
 </script>
 
 <style scoped>

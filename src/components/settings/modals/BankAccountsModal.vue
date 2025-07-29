@@ -6,99 +6,131 @@
     @close="$emit('close')"
   >
     <div class="bank-accounts-container">
-      <!-- Add New Button -->
-      <div class="action-header">
-        <h3 class="section-title">Bank Accounts</h3>
-        <el-button 
-          type="primary" 
-          icon="el-icon-plus"
-          @click="openForm()"
-        >
-          Add New Bank Account
+      <!-- Loading State -->
+      <div v-if="bankAccountStore.isLoading" class="loading-container">
+        <el-loading-spinner />
+        <p>Loading bank accounts...</p>
+      </div>
+
+      <!-- Error State -->
+      <div v-else-if="bankAccountStore.hasError" class="error-container">
+        <el-alert
+          :title="bankAccountStore.error"
+          type="error"
+          show-icon
+          :closable="false"
+        />
+        <el-button @click="loadBankAccounts" type="primary" style="margin-top: 1rem;">
+          Retry
         </el-button>
       </div>
 
-      <!-- Data Table -->
-      <data-table
-        :columns="columns"
-        :items="bankAccounts"
-        @edit="openForm"
-        @delete="confirmDelete"
-      >
-        <template #cardNumber="{ item }">
-          <span class="mono-text">{{ formatCardNumber(item.cardNumber) }}</span>
-        </template>
-        <template #iban="{ item }">
-          <span class="mono-text">{{ formatIBAN(item.iban) }}</span>
-        </template>
-      </data-table>
+      <!-- Main Content -->
+      <div v-else>
+        <!-- Add New Button -->
+        <div class="action-header">
+          <h3 class="section-title">Bank Accounts</h3>
+          <el-button 
+            type="primary" 
+            icon="el-icon-plus"
+            @click="openForm()"
+            :disabled="bankAccountStore.isLoading"
+          >
+            Add New Bank Account
+          </el-button>
+        </div>
 
-      <!-- Form Modal -->
-      <div v-if="showForm" class="form-modal-overlay">
-        <div class="form-modal">
-          <div class="form-modal-header">
-            <h3 class="form-modal-title">
-              {{ editingItem ? 'Edit Bank Account' : 'Add New Bank Account' }}
-            </h3>
-            <button class="form-close-button" @click="closeForm">
-              <i class="el-icon-close"></i>
-            </button>
+        <!-- Data Table -->
+        <data-table
+          :columns="columns"
+          :items="bankAccountStore.bankAccounts"
+          @edit="openForm"
+          @delete="confirmDelete"
+        >
+          <template #card_number="{ item }">
+            <span class="mono-text">{{ bankAccountStore.formatCardNumber(item.card_number) }}</span>
+          </template>
+          <template #iban="{ item }">
+            <span class="mono-text">{{ formatIBAN(item.iban) }}</span>
+          </template>
+          <template #created_at="{ item }">
+            {{ formatDate(item.created_at) }}
+          </template>
+        </data-table>
+
+        <!-- Form Modal -->
+        <div v-if="showForm" class="form-modal-overlay">
+          <div class="form-modal">
+            <div class="form-modal-header">
+              <h3 class="form-modal-title">
+                {{ editingItem ? 'Edit Bank Account' : 'Add New Bank Account' }}
+              </h3>
+              <button class="form-close-button" @click="closeForm">
+                <i class="el-icon-close"></i>
+              </button>
+            </div>
+            
+            <form @submit.prevent="saveItem" class="form-content">
+              <!-- Account Name -->
+              <div class="form-group">
+                <label class="form-label">Account Name *</label>
+                <el-input
+                  v-model="form.account_name"
+                  placeholder="e.g., Main Business Account"
+                  :class="{ 'error': formErrors.account_name }"
+                />
+                <p v-if="formErrors.account_name" class="form-error">
+                  {{ formErrors.account_name }}
+                </p>
+              </div>
+
+              <!-- Card Number -->
+              <div class="form-group">
+                <label class="form-label">Card Number *</label>
+                <el-input
+                  v-model="form.card_number"
+                  placeholder="1234 5678 9012 3456"
+                  maxlength="19"
+                  @input="formatCardNumberInput"
+                  class="mono-input"
+                  :class="{ 'error': formErrors.card_number }"
+                />
+                <p v-if="formErrors.card_number" class="form-error">
+                  {{ formErrors.card_number }}
+                </p>
+              </div>
+
+              <!-- IBAN -->
+              <div class="form-group">
+                <label class="form-label">IBAN *</label>
+                <el-input
+                  v-model="form.iban"
+                  placeholder="XX00 0000 0000 0000 0000 0000 000"
+                  maxlength="34"
+                  @input="formatIBANInput"
+                  class="mono-input"
+                  :class="{ 'error': formErrors.iban }"
+                />
+                <p v-if="formErrors.iban" class="form-error">
+                  {{ formErrors.iban }}
+                </p>
+              </div>
+
+              <div class="form-actions">
+                <el-button @click="closeForm" :disabled="bankAccountStore.isLoading">
+                  Cancel
+                </el-button>
+                <el-button 
+                  type="primary" 
+                  native-type="submit"
+                  :disabled="!isFormValid || bankAccountStore.isLoading"
+                  :loading="bankAccountStore.isLoading"
+                >
+                  {{ editingItem ? 'Update' : 'Save' }}
+                </el-button>
+              </div>
+            </form>
           </div>
-          
-          <form @submit.prevent="saveItem" class="form-content">
-            <!-- Account Name -->
-            <div class="form-group">
-              <label class="form-label">Account Name</label>
-              <el-input
-                v-model="form.accountName"
-                placeholder="e.g., Main Business Account"
-                required
-              />
-            </div>
-
-            <!-- Card Number -->
-            <div class="form-group">
-              <label class="form-label">Card Number</label>
-              <el-input
-                v-model="form.cardNumber"
-                placeholder="1234 5678 9012 3456"
-                maxlength="19"
-                @input="formatCardNumberInput"
-                class="mono-input"
-              />
-              <p v-if="cardNumberError" class="form-error">
-                {{ cardNumberError }}
-              </p>
-            </div>
-
-            <!-- IBAN -->
-            <div class="form-group">
-              <label class="form-label">IBAN</label>
-              <el-input
-                v-model="form.iban"
-                placeholder="XX00 0000 0000 0000 0000 0000 000"
-                maxlength="34"
-                @input="formatIBANInput"
-                class="mono-input"
-              />
-              <p v-if="ibanError" class="form-error">
-                {{ ibanError }}
-              </p>
-            </div>
-
-            <div class="form-actions">
-              <el-button @click="closeForm">
-                Cancel
-              </el-button>
-              <el-button 
-                type="primary" 
-                native-type="submit"
-                :disabled="!isFormValid"
-              >
-                {{ editingItem ? 'Update' : 'Save' }}
-              </el-button>
-            </div>
-          </form>
         </div>
       </div>
     </div>
@@ -106,9 +138,12 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import BaseModal from '../BaseModal.vue'
 import DataTable from '../DataTable.vue'
+import { useBankAccountStore } from '@/stores/bankAccountStore'
+import { formatDate } from '@/utils/dateUtils'
 
 const props = defineProps({
   modelValue: {
@@ -119,103 +154,75 @@ const props = defineProps({
 
 const emit = defineEmits(['update:modelValue', 'close'])
 
+// Store
+const bankAccountStore = useBankAccountStore()
+
 // Table configuration
 const columns = [
   { key: 'id', label: 'ID', width: '70' },
-  { key: 'accountName', label: 'Account Name' },
-  { key: 'cardNumber', label: 'Card Number' },
-  { key: 'iban', label: 'IBAN' }
+  { key: 'account_name', label: 'Account Name' },
+  { key: 'card_number', label: 'Card Number' },
+  { key: 'iban', label: 'IBAN' },
+  { key: 'created_at', label: 'Created' }
 ]
-
-// Dummy data
-const bankAccounts = ref([
-  {
-    id: 1,
-    accountName: 'Main Business Account',
-    cardNumber: '1234567890123456',
-    iban: 'DE89370400440532013000'
-  },
-  {
-    id: 2,
-    accountName: 'Secondary Account',
-    cardNumber: '9876543210987654',
-    iban: 'GB29NWBK60161331926819'
-  }
-])
 
 // Form state
 const showForm = ref(false)
 const editingItem = ref(null)
 const form = ref({
-  accountName: '',
-  cardNumber: '',
+  account_name: '',
+  card_number: '',
   iban: ''
 })
 
-// Validation state
-const cardNumberError = ref('')
-const ibanError = ref('')
+// Form validation
+const formErrors = ref({})
 
 // Computed properties
 const isFormValid = computed(() => {
-  return form.value.accountName &&
-         form.value.cardNumber &&
-         form.value.iban &&
-         !cardNumberError.value &&
-         !ibanError.value
+  const validation = bankAccountStore.validateBankAccount(form.value)
+  formErrors.value = validation.errors
+  return validation.isValid && 
+         !bankAccountStore.isAccountNameExists(form.value.account_name, editingItem.value?.id) &&
+         !bankAccountStore.isCardNumberExists(form.value.card_number?.replace(/\s/g, ''), editingItem.value?.id)
 })
 
 // Formatting functions
-const formatCardNumber = (number) => {
-  if (!number) return ''
-  return number.replace(/(\d{4})/g, '$1 ').trim()
-}
-
 const formatIBAN = (iban) => {
   if (!iban) return ''
   return iban.replace(/(.{4})/g, '$1 ').trim()
 }
 
 // Input formatting
-const formatCardNumberInput = (event) => {
-  let value = event.target.value.replace(/\D/g, '')
+const formatCardNumberInput = () => {
+  let value = form.value.card_number.replace(/\D/g, '')
   if (value.length > 16) value = value.slice(0, 16)
-  form.value.cardNumber = formatCardNumber(value)
-  
-  // Validation
-  if (value.length !== 16) {
-    cardNumberError.value = 'Card number must be 16 digits'
-  } else {
-    cardNumberError.value = ''
-  }
+  form.value.card_number = bankAccountStore.formatCardNumber(value)
 }
 
-const formatIBANInput = (event) => {
-  let value = event.target.value.replace(/\s/g, '').toUpperCase()
+const formatIBANInput = () => {
+  let value = form.value.iban.replace(/\s/g, '').toUpperCase()
+  if (value.length > 34) value = value.slice(0, 34)
   form.value.iban = formatIBAN(value)
-  
-  // Basic IBAN validation
-  if (value.length < 15 || value.length > 34) {
-    ibanError.value = 'IBAN must be between 15 and 34 characters'
-  } else if (!/^[A-Z0-9]+$/.test(value)) {
-    ibanError.value = 'IBAN can only contain letters and numbers'
-  } else {
-    ibanError.value = ''
-  }
 }
 
 // Form methods
 const openForm = (item = null) => {
   editingItem.value = item
   if (item) {
-    form.value = { ...item }
+    form.value = {
+      account_name: item.account_name,
+      card_number: bankAccountStore.formatCardNumber(item.card_number),
+      iban: formatIBAN(item.iban)
+    }
   } else {
     form.value = {
-      accountName: '',
-      cardNumber: '',
+      account_name: '',
+      card_number: '',
       iban: ''
     }
   }
+  formErrors.value = {}
   showForm.value = true
 }
 
@@ -223,48 +230,94 @@ const closeForm = () => {
   showForm.value = false
   editingItem.value = null
   form.value = {
-    accountName: '',
-    cardNumber: '',
+    account_name: '',
+    card_number: '',
     iban: ''
   }
-  cardNumberError.value = ''
-  ibanError.value = ''
+  formErrors.value = {}
 }
 
-const saveItem = () => {
+const saveItem = async () => {
   if (!isFormValid.value) return
 
-  const accountData = {
-    ...form.value,
-    cardNumber: form.value.cardNumber.replace(/\s/g, ''),
-    iban: form.value.iban.replace(/\s/g, '')
-  }
-
-  if (editingItem.value) {
-    // Update existing item
-    const index = bankAccounts.value.findIndex(item => item.id === editingItem.value.id)
-    if (index !== -1) {
-      bankAccounts.value[index] = {
-        ...bankAccounts.value[index],
-        ...accountData
-      }
+  try {
+    const accountData = {
+      account_name: form.value.account_name.trim(),
+      card_number: form.value.card_number.replace(/\s/g, ''),
+      iban: form.value.iban.replace(/\s/g, '')
     }
-  } else {
-    // Add new item
-    const newId = Math.max(...bankAccounts.value.map(item => item.id), 0) + 1
-    bankAccounts.value.push({
-      id: newId,
-      ...accountData
-    })
+
+    if (editingItem.value) {
+      await bankAccountStore.updateBankAccount(editingItem.value.id, accountData)
+      ElMessage.success('Bank account updated successfully!')
+    } else {
+      await bankAccountStore.createBankAccount(accountData)
+      ElMessage.success('Bank account created successfully!')
+    }
+    
+    closeForm()
+  } catch (error) {
+    console.error('Error saving bank account:', error)
+    
+    // Handle validation errors from backend
+    if (error.response?.data) {
+      const backendErrors = error.response.data
+      if (typeof backendErrors === 'object') {
+        formErrors.value = { ...formErrors.value, ...backendErrors }
+      } else {
+        ElMessage.error(backendErrors.detail || 'Failed to save bank account')
+      }
+    } else {
+      ElMessage.error('Failed to save bank account')
+    }
   }
-  closeForm()
 }
 
-const confirmDelete = (item) => {
-  if (confirm('Are you sure you want to delete this bank account?')) {
-    bankAccounts.value = bankAccounts.value.filter(i => i.id !== item.id)
+const confirmDelete = async (item) => {
+  try {
+    await ElMessageBox.confirm(
+      `Are you sure you want to delete the bank account "${item.account_name}"?`,
+      'Confirm Delete',
+      {
+        confirmButtonText: 'Delete',
+        cancelButtonText: 'Cancel',
+        type: 'warning',
+        confirmButtonClass: 'el-button--danger'
+      }
+    )
+    
+    await bankAccountStore.deleteBankAccount(item.id)
+    ElMessage.success('Bank account deleted successfully!')
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error('Error deleting bank account:', error)
+      ElMessage.error('Failed to delete bank account')
+    }
   }
 }
+
+// Load data
+const loadBankAccounts = async () => {
+  try {
+    await bankAccountStore.fetchBankAccounts()
+  } catch (error) {
+    console.error('Error loading bank accounts:', error)
+  }
+}
+
+// Watch for modal open/close
+watch(() => props.modelValue, (newValue) => {
+  if (newValue) {
+    loadBankAccounts()
+  }
+})
+
+// Load data on mount
+onMounted(() => {
+  if (props.modelValue) {
+    loadBankAccounts()
+  }
+})
 </script>
 
 <style scoped>
@@ -272,6 +325,19 @@ const confirmDelete = (item) => {
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
+}
+
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem;
+  gap: 1rem;
+}
+
+.error-container {
+  padding: 1rem;
 }
 
 .action-header {
@@ -336,6 +402,22 @@ const confirmDelete = (item) => {
   margin: 0;
 }
 
+.form-close-button {
+  background: none;
+  border: none;
+  font-size: 1.25rem;
+  cursor: pointer;
+  color: #64748b;
+  padding: 0.25rem;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.form-close-button:hover {
+  background-color: #f1f5f9;
+  color: #1e293b;
+}
+
 .form-content {
   padding: 1.5rem;
   display: flex;
@@ -364,11 +446,15 @@ const confirmDelete = (item) => {
 .form-actions {
   display: flex;
   justify-content: flex-end;
-  gap: 0.45rem;
+  gap: 0.75rem;
   margin-top: 0.5rem;
 }
 
 .mono-input :deep(input) {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.error :deep(.el-input__inner) {
+  border-color: #e11d48;
 }
 </style> 

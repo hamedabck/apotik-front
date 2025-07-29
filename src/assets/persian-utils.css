@@ -1,0 +1,179 @@
+/* Persian Text Utility Classes */
+
+/* Auto-detect and style Persian content */
+.auto-persian {
+  font-family: var(--font-mixed);
+}
+
+.auto-persian:lang(fa),
+.auto-persian:lang(fa-IR),
+.auto-persian[dir="rtl"] {
+  font-family: var(--font-persian);
+  direction: rtl;
+  text-align: right;
+}
+
+/* Explicit Persian text styling */
+.persian {
+  font-family: var(--font-persian) !important;
+  direction: rtl;
+  text-align: right;
+}
+
+.persian-inline {
+  font-family: var(--font-persian) !important;
+  direction: rtl;
+  display: inline-block;
+}
+
+/* Mixed content (Persian + English) */
+.mixed {
+  font-family: var(--font-mixed);
+}
+
+/* Currency and price utilities */
+.price {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  direction: ltr;
+}
+
+.price.rtl {
+  direction: rtl;
+  flex-direction: row-reverse;
+}
+
+.price .amount {
+  font-family: var(--font-english);
+  font-weight: 500;
+}
+
+.price .currency {
+  font-family: var(--font-persian);
+  font-size: 0.9em;
+  color: var(--text-secondary, #606266);
+}
+
+/* Table cell utilities */
+.table-persian {
+  font-family: var(--font-persian);
+  direction: rtl;
+  text-align: right;
+}
+
+.table-mixed {
+  font-family: var(--font-mixed);
+}
+
+/* Form input utilities */
+.input-persian {
+  font-family: var(--font-persian);
+  direction: rtl;
+  text-align: right;
+}
+
+.input-mixed {
+  font-family: var(--font-mixed);
+}
+
+/* Typography utilities */
+.text-persian {
+  font-family: var(--font-persian);
+}
+
+.text-english {
+  font-family: var(--font-english);
+}
+
+.text-mixed {
+  font-family: var(--font-mixed);
+}
+
+/* Weight utilities for Persian fonts */
+.persian-light {
+  font-family: var(--font-persian);
+  font-weight: 300;
+}
+
+.persian-normal {
+  font-family: var(--font-persian);
+  font-weight: 400;
+}
+
+.persian-medium {
+  font-family: var(--font-persian);
+  font-weight: 500;
+}
+
+.persian-semibold {
+  font-family: var(--font-persian);
+  font-weight: 600;
+}
+
+.persian-bold {
+  font-family: var(--font-persian);
+  font-weight: 700;
+}
+
+/* Direction utilities */
+.dir-rtl {
+  direction: rtl;
+  text-align: right;
+}
+
+.dir-ltr {
+  direction: ltr;
+  text-align: left;
+}
+
+.dir-auto {
+  direction: auto;
+}
+
+/* Element Plus component overrides for Persian content */
+.el-table .persian-cell {
+  font-family: var(--font-persian);
+  direction: rtl;
+  text-align: right;
+}
+
+.el-descriptions-item .persian-content {
+  font-family: var(--font-persian);
+  direction: rtl;
+}
+
+.el-input.persian-input input,
+.el-textarea.persian-input textarea {
+  font-family: var(--font-persian);
+  direction: rtl;
+  text-align: right;
+}
+
+.el-select.persian-select .el-input input {
+  font-family: var(--font-persian);
+  direction: rtl;
+  text-align: right;
+}
+
+.el-tag.persian-tag {
+  font-family: var(--font-persian);
+}
+
+/* Responsive Persian text */
+@media (max-width: 768px) {
+  .persian,
+  .persian-inline {
+    font-size: 0.9em;
+  }
+  
+  .price {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+  }
+  
+  .price.rtl {
+    align-items: flex-end;
+  }
+} 

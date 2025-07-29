@@ -2,29 +2,59 @@
   <base-modal
     :model-value="modelValue"
     @update:model-value="$emit('update:modelValue', $event)"
-    title="Distribution Companies"
+    title="Distribution Companies Management"
     @close="$emit('close')"
   >
     <div class="distribution-companies-container">
       <!-- Add New Button -->
       <div class="action-header">
-        <h3 class="section-title">Distribution Companies</h3>
+        <h3 class="section-title">
+          Distribution Companies
+          <span v-if="distributionCompanyStore.pharmacyInfo" class="pharmacy-info">
+            - {{ distributionCompanyStore.pharmacyInfo.name }}
+          </span>
+        </h3>
         <el-button 
           type="primary" 
           icon="el-icon-plus"
           @click="openForm()"
+          :loading="distributionCompanyStore.loading"
         >
           Add New Company
         </el-button>
       </div>
 
+      <!-- Loading State -->
+      <div v-if="distributionCompanyStore.loading && companies.length === 0" class="loading-container">
+        <el-skeleton :rows="5" animated />
+      </div>
+
+      <!-- Error State -->
+      <div v-else-if="distributionCompanyStore.error && companies.length === 0" class="error-container">
+        <el-alert
+          title="Failed to load distribution companies"
+          type="error"
+          :description="distributionCompanyStore.error"
+          show-icon
+          :closable="false">
+        </el-alert>
+        <div class="error-actions">
+          <el-button @click="loadCompanies" type="primary">Try Again</el-button>
+        </div>
+      </div>
+
       <!-- Data Table -->
       <data-table
+        v-else
         :columns="columns"
         :items="companies"
         @edit="openForm"
         @delete="confirmDelete"
+        :loading="distributionCompanyStore.loading"
       >
+        <template #created_at="{ item }">
+          <span>{{ formatDate(item.created_at) }}</span>
+        </template>
       </data-table>
 
       <!-- Form Modal -->
@@ -32,7 +62,7 @@
         <div class="form-modal">
           <div class="form-modal-header">
             <h3 class="form-modal-title">
-              {{ editingItem ? 'Edit Company' : 'Add New Company' }}
+              {{ editingItem ? 'Edit Distribution Company' : 'Add New Distribution Company' }}
             </h3>
             <button class="form-close-button" @click="closeForm">
               <i class="el-icon-close"></i>
@@ -42,21 +72,29 @@
           <form @submit.prevent="saveItem" class="form-content">
             <!-- Company Name -->
             <div class="form-group">
-              <label class="form-label">Company Name</label>
+              <label class="form-label">Company Name *</label>
               <el-input
                 v-model="form.name"
                 placeholder="e.g., Kimia Farma Distribution"
                 required
+                :disabled="formLoading"
               />
+              <div v-if="formErrors.name" class="form-error">
+                {{ formErrors.name }}
+              </div>
             </div>
 
             <!-- Contact Person -->
             <div class="form-group">
               <label class="form-label">Contact Person</label>
               <el-input
-                v-model="form.contactPerson"
+                v-model="form.contact_person"
                 placeholder="e.g., John Smith"
+                :disabled="formLoading"
               />
+              <div v-if="formErrors.contact_person" class="form-error">
+                {{ formErrors.contact_person }}
+              </div>
             </div>
 
             <!-- Phone -->
@@ -65,26 +103,42 @@
               <el-input
                 v-model="form.phone"
                 placeholder="e.g., +62 21 1234567"
+                :disabled="formLoading"
               />
+              <div v-if="formErrors.phone" class="form-error">
+                {{ formErrors.phone }}
+              </div>
             </div>
 
-            <!-- Email -->
-            <!-- <div class="form-group">
-              <label class="form-label">Email</label>
+            <!-- Address -->
+            <div class="form-group">
+              <label class="form-label">Address</label>
               <el-input
-                v-model="form.email"
-                placeholder="e.g., contact@company.com"
+                v-model="form.address"
+                type="textarea"
+                rows="3"
+                placeholder="Company address"
+                :disabled="formLoading"
               />
-            </div> -->
+              <div v-if="formErrors.address" class="form-error">
+                {{ formErrors.address }}
+              </div>
+            </div>
+
+            <!-- General form errors -->
+            <div v-if="formErrors.general" class="form-error general-error">
+              {{ formErrors.general }}
+            </div>
 
             <div class="form-actions">
-              <el-button @click="closeForm">
+              <el-button @click="closeForm" :disabled="formLoading">
                 Cancel
               </el-button>
               <el-button 
                 type="primary" 
                 native-type="submit"
-                :disabled="!isFormValid"
+                :disabled="!isFormValid || formLoading"
+                :loading="formLoading"
               >
                 {{ editingItem ? 'Update' : 'Save' }}
               </el-button>
@@ -97,9 +151,12 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import { ElMessageBox } from 'element-plus'
 import BaseModal from '../BaseModal.vue'
 import DataTable from '../DataTable.vue'
+import { useDistributionCompanyStore } from '@/stores/distributionCompanyStore'
+import { formatDate } from '@/utils/dateUtils'
 
 const props = defineProps({
   modelValue: {
@@ -109,60 +166,69 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['update:modelValue', 'close'])
+const distributionCompanyStore = useDistributionCompanyStore()
 
 // Table configuration
 const columns = [
-  { key: 'id', label: 'ID' },
+  { key: 'id', label: 'ID', width: '70' },
   { key: 'name', label: 'Company Name' },
-  { key: 'contactPerson', label: 'Contact Person' },
+  { key: 'contact_person', label: 'Contact Person' },
   { key: 'phone', label: 'Phone' },
-//   { key: 'email', label: 'Email' }
+  { key: 'created_at', label: 'Created' }
 ]
 
-// Dummy data
-const companies = ref([
-  {
-    id: 1,
-    name: 'Kimia Farma Distribution',
-    contactPerson: 'Budi Santoso',
-    phone: '+62 21 1234567',
-    // email: 'distribution@kimiafarma.co.id'
-  },
-  {
-    id: 2,
-    name: 'Kalbe Farma',
-    contactPerson: 'Dewi Lestari',
-    phone: '+62 21 7654321',
-    // email: 'sales@kalbefarma.com'
-  }
-])
+// Use store data
+const companies = computed(() => distributionCompanyStore.companies)
 
 // Form state
 const showForm = ref(false)
 const editingItem = ref(null)
+const formLoading = ref(false)
+const formErrors = ref({})
 const form = ref({
   name: '',
-  contactPerson: '',
+  contact_person: '',
   phone: '',
-//   email: ''
+  address: ''
 })
 
 // Computed properties
 const isFormValid = computed(() => {
-  return form.value.name
+  return form.value.name && form.value.name.trim()
 })
+
+// Load companies on component mount
+onMounted(async () => {
+  await loadCompanies()
+})
+
+// Methods
+const loadCompanies = async () => {
+  try {
+    await distributionCompanyStore.fetchCompanies()
+  } catch (error) {
+    console.error('Failed to load distribution companies:', error)
+  }
+}
 
 // Form methods
 const openForm = (item = null) => {
   editingItem.value = item
+  formErrors.value = {}
+  
   if (item) {
-    form.value = { ...item }
+    form.value = { 
+      name: item.name,
+      contact_person: item.contact_person || '',
+      phone: item.phone || '',
+      address: item.address || ''
+    }
   } else {
     form.value = {
       name: '',
-      contactPerson: '',
+      contact_person: '',
       phone: '',
-    //   email: ''
+      address: ''
     }
   }
   showForm.value = true
@@ -171,42 +237,78 @@ const openForm = (item = null) => {
 const closeForm = () => {
   showForm.value = false
   editingItem.value = null
+  formErrors.value = {}
   form.value = {
     name: '',
-    contactPerson: '',
+    contact_person: '',
     phone: '',
-    // email: ''
+    address: ''
   }
 }
 
-const saveItem = () => {
+const saveItem = async () => {
   if (!isFormValid.value) return
 
-  const companyData = { ...form.value }
+  formLoading.value = true
+  formErrors.value = {}
 
-  if (editingItem.value) {
-    // Update existing item
-    const index = companies.value.findIndex(item => item.id === editingItem.value.id)
-    if (index !== -1) {
-      companies.value[index] = {
-        ...companies.value[index],
-        ...companyData
-      }
+  try {
+    const companyData = { ...form.value }
+
+    if (editingItem.value) {
+      // Update existing item
+      await distributionCompanyStore.updateCompany(editingItem.value.id, companyData)
+    } else {
+      // Add new item
+      await distributionCompanyStore.addCompany(companyData)
     }
-  } else {
-    // Add new item
-    const newId = Math.max(...companies.value.map(item => item.id), 0) + 1
-    companies.value.push({
-      id: newId,
-      ...companyData
-    })
+    
+    closeForm()
+  } catch (error) {
+    console.error('Error saving distribution company:', error)
+    
+    // Handle validation errors
+    if (error.response?.data) {
+      const errorData = error.response.data
+      
+      // Handle field-specific errors
+      Object.keys(errorData).forEach(field => {
+        if (Array.isArray(errorData[field])) {
+          formErrors.value[field] = errorData[field][0]
+        } else if (typeof errorData[field] === 'string') {
+          formErrors.value[field] = errorData[field]
+        }
+      })
+      
+      // Handle general errors
+      if (errorData.detail) {
+        formErrors.value.general = errorData.detail
+      }
+    } else {
+      formErrors.value.general = 'An unexpected error occurred. Please try again.'
+    }
+  } finally {
+    formLoading.value = false
   }
-  closeForm()
 }
 
-const confirmDelete = (item) => {
-  if (confirm('Are you sure you want to delete this company?')) {
-    companies.value = companies.value.filter(i => i.id !== item.id)
+const confirmDelete = async (item) => {
+  try {
+    await ElMessageBox.confirm(
+      `Are you sure you want to delete "${item.name}"? This action cannot be undone.`,
+      'Confirm Delete',
+      {
+        confirmButtonText: 'Delete',
+        cancelButtonText: 'Cancel',
+        type: 'warning',
+      }
+    )
+    
+    await distributionCompanyStore.deleteCompany(item.id)
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error('Error deleting distribution company:', error)
+    }
   }
 }
 </script>
@@ -230,6 +332,13 @@ const confirmDelete = (item) => {
   font-weight: 600;
   color: #1e293b;
   margin: 0;
+}
+
+.pharmacy-info {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #64748b;
+  margin-left: 0.5rem;
 }
 
 /* Form Modal */
@@ -314,10 +423,34 @@ const confirmDelete = (item) => {
   color: #64748b;
 }
 
+.form-error {
+  margin-top: 0.375rem;
+  color: #e11d48;
+  font-size: 0.75rem;
+}
+
 .form-actions {
   display: flex;
   justify-content: flex-end;
   gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.loading-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 1.5rem;
+}
+
+.error-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 1.5rem;
+}
+
+.error-actions {
   margin-top: 1rem;
 }
 </style> 

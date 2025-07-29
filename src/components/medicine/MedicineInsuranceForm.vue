@@ -3,40 +3,71 @@
     <div class="insurance-entries">
       <h3 class="form-section-title">
         Insurance Coverage
+        <span v-if="medicineDetails.persian_name" class="medicine-name">
+          for {{ medicineDetails.persian_name }}
+        </span>
       </h3>
       
       <!-- Insurance Form Card -->
       <div class="insurance-form-card">
         <div class="insurance-header">
-          <h4>Add Insurance Coverage</h4>
-          <el-button 
-            type="primary" 
-            size="small"
-            @click="addNewInsuranceToTable"
-            class="add-button"
-          >
-            <el-icon><i-ep-plus /></el-icon> {{ isEditing ? 'Update Batch' : 'Add to Table' }}
-          </el-button>
+          <h4>{{ isEditing ? 'Edit Insurance Coverage' : 'Add Insurance Coverage' }}</h4>
+          <div class="header-buttons">
+            <el-button 
+              v-if="isEditing"
+              size="small"
+              @click="cancelEdit"
+              class="cancel-button"
+            >
+              Cancel
+            </el-button>
+            <el-button 
+              type="primary" 
+              size="small"
+              @click="saveInsuranceCoverage"
+              :loading="pharmacyDrugStore.loading"
+              class="add-button"
+            >
+              <el-icon><i-ep-plus /></el-icon> 
+              {{ isEditing ? 'Update Coverage' : 'Add Coverage' }}
+            </el-button>
+          </div>
         </div>
         
         <div class="insurance-form-content">
           <!-- First row: Provider and Specialties -->
           <div class="form-row">
             <div class="form-group">
-              <label class="compact-label">Insurance Provider</label>
+              <label class="compact-label">Insurance Provider *</label>
               <el-select 
-                v-model="currentInsurance.insuranceId" 
+                v-model="currentInsurance.insurance" 
                 placeholder="Select provider" 
-                @change="handleCurrentInsuranceSelect"
+                @change="handleInsuranceSelect"
                 class="compact-input"
+                :disabled="!medicineDetails.id || getAvailableInsurances.length === 0"
               >
                 <el-option 
-                  v-for="ins in availableInsurances" 
+                  v-for="ins in getAvailableInsurances" 
                   :key="ins.id" 
                   :label="ins.name" 
                   :value="ins.id" 
                 />
               </el-select>
+              <span class="help-text" v-if="!medicineDetails.id">
+                Please save the medicine details first
+              </span>
+              <span class="help-text" v-else-if="getAvailableInsurances.length === 0">
+                All available insurance providers have been used for this medicine
+              </span>
+              <span class="help-text" v-else>
+                Select an insurance provider (excludes already used providers)
+              </span>
+              
+              <!-- Warning when no more providers available -->
+              <!-- <div v-if="medicineDetails.id && getAvailableInsurances.length === 0" class="no-more-providers-warning">
+                <el-icon><i-ep-warning /></el-icon>
+                <span>All available insurance providers have been used for this medicine.</span>
+              </div> -->
             </div>
             
             <div class="form-group">
@@ -78,40 +109,45 @@
           <!-- Second row: Price, Coverage %, ARZ Share, Total Coverage -->
           <div class="form-row">
             <div class="form-group">
-              <label class="compact-label">Insurance Price</label>
+              <label class="compact-label">Insurance Price *</label>
               <el-input 
-                v-model="currentInsurance.price" 
-                type="number"
+                v-model="formattedPrice" 
                 placeholder="Price"
-                @input="updateCurrentCoverageAmount"
-                class="compact-input"
+                @input="handlePriceInput"
+                @blur="formatPriceDisplay"
+                class="compact-input price-input"
               />
             </div>
             
             <div class="form-group">
-              <label class="compact-label">Coverage %</label>
+              <label class="compact-label">Coverage % *</label>
               <el-input 
-                v-model="currentInsurance.percentage" 
+                v-model.number="currentInsurance.percentage" 
                 type="number"
                 placeholder="Percentage"
                 min="0"
                 max="100"
-                @input="updateCurrentCoverageAmount"
+                @input="handlePercentageInput"
+                @blur="validatePercentage"
                 class="compact-input"
+                :class="{ 'percentage-error': isPercentageInvalid }"
               />
-              <span class="help-text" v-if="currentInsurance.price > 0 && currentInsurance.percentage > 0">
-                Coverage: {{ currentInsurance.coverageAmount }}
+              <span class="help-text" v-if="currentInsurance.price > 0 && currentInsurance.percentage > 0 && !isPercentageInvalid">
+                Coverage: {{ formatNumber(currentInsurance.coverage_amount) }}
+              </span>
+              <span class="error-text" v-if="isPercentageInvalid">
+                Coverage percentage must be between 0 and 100
               </span>
             </div>
             
             <div class="form-group">
               <label class="compact-label">ARZ Share</label>
               <el-input 
-                v-model="currentInsurance.share" 
-                type="number"
+                v-model="formattedShare" 
                 placeholder="Share amount"
-                @input="updateCurrentCoverageAmount"
-                class="compact-input"
+                @input="handleShareInput"
+                @blur="formatShareDisplay"
+                class="compact-input share-input"
               />
             </div>
             <div class="form-group">
@@ -124,7 +160,7 @@
                 class="compact-input"
               />
               <span class="help-text" v-if="currentInsurance.total > 0">
-                Ins ({{ currentInsurance.coverageAmount }}) + ARZ ({{ currentInsurance.share }})
+                Ins ({{ formatNumber(currentInsurance.coverage_amount) }}) + ARZ ({{ formatNumber(currentInsurance.share) }})
               </span>
             </div>
           </div>
@@ -134,10 +170,11 @@
             <div class="form-group">
               <label class="compact-label">Maximum Units</label>
               <el-input 
-                v-model="currentInsurance.numMax" 
+                v-model.number="currentInsurance.num_max" 
                 type="number"
                 placeholder="Max units"
                 class="compact-input"
+                :min="0"
               />
               <span class="help-text">Max units per prescription</span>
             </div>
@@ -145,7 +182,7 @@
             <div class="form-group">
               <label class="compact-label">Maximum Age</label>
               <el-input 
-                v-model="currentInsurance.ageMax" 
+                v-model.number="currentInsurance.age_max" 
                 type="number"
                 placeholder="Max age"
                 min="0"
@@ -156,29 +193,30 @@
             </div>
             <div class="form-group switch-group">
               <label class="compact-label">Barcode Required</label>
-              <el-switch v-model="currentInsurance.barcodeRequired" />
+              <el-switch v-model="currentInsurance.barcode_required" />
             </div>
             
             <div class="form-group switch-group">
               <label class="compact-label">Hospital Required</label>
-              <el-switch v-model="currentInsurance.hospitalRequired" />
+              <el-switch v-model="currentInsurance.hospital_required" />
             </div>
           </div>
         </div>
       </div>
       
       <!-- Insurance Table -->
-      <div v-if="modelValue.length > 0" class="insurance-table-wrapper">
+      <div v-if="drugInsurances.length > 0" class="insurance-table-wrapper">
         <h4 class="table-title">Insurance Coverage Table</h4>
         <el-table 
-          :data="modelValue" 
+          :data="drugInsurances" 
           stripe 
           border
           table-layout="fixed"
           class="insurance-table"
           :max-height="500"
+          v-loading="pharmacyDrugStore.loading"
         >
-          <el-table-column prop="insuranceName" label="Provider" width="160" />
+          <el-table-column prop="insurance_name" label="Provider" width="160" />
           <el-table-column prop="specialties" label="Specialties" width="150">
             <template #default="scope">
               <el-tag
@@ -192,29 +230,45 @@
               </el-tag>
             </template>
           </el-table-column>
-          <el-table-column prop="price" label="Price" width="100" />
-          <el-table-column prop="percentage" label="rate %" width="80" />
-          <el-table-column prop="coverageAmount" label="Coverage Amount" width="150" />
-          <el-table-column prop="share" label="ARZ Share" width="100" />
-          <el-table-column prop="total" label="Total" width="100" />
-          <el-table-column prop="numMax" label="Max Units" width="100" />
-          <el-table-column prop="ageMax" label="Max Age" width="100" />
-          <el-table-column label="Needs" width="150">
+          <el-table-column prop="price" label="Price" width="100">
+            <template #default="scope">
+              {{ formatCurrency(scope.row.price) }}
+            </template>
+          </el-table-column>
+          <el-table-column prop="percentage" label="Rate %" width="80" />
+          <el-table-column prop="coverage_amount" label="Coverage Amount" width="150">
+            <template #default="scope">
+              {{ formatCurrency(scope.row.coverage_amount) }}
+            </template>
+          </el-table-column>
+          <el-table-column prop="share" label="ARZ Share" width="100">
+            <template #default="scope">
+              {{ formatCurrency(scope.row.share) }}
+            </template>
+          </el-table-column>
+          <el-table-column prop="total" label="Total" width="100">
+            <template #default="scope">
+              {{ formatCurrency(scope.row.total) }}
+            </template>
+          </el-table-column>
+          <el-table-column prop="num_max" label="Max Units" width="100" />
+          <el-table-column prop="age_max" label="Max Age" width="100" />
+          <el-table-column label="Requirements" width="150">
             <template #default="scope">
               <div class="needs-container">
                 <el-tag 
                   size="small" 
-                  :type="scope.row.barcodeRequired ? 'danger' : 'info'"
+                  :type="scope.row.barcode_required ? 'danger' : 'info'"
                   class="requirement-tag"
                 >
-                  {{ scope.row.barcodeRequired ? 'Barcode Required' : 'No Barcode' }}
+                  {{ scope.row.barcode_required ? 'Barcode Required' : 'No Barcode' }}
                 </el-tag>
                 <el-tag 
                   size="small" 
-                  :type="scope.row.hospitalRequired ? 'danger' : 'info'"
+                  :type="scope.row.hospital_required ? 'danger' : 'info'"
                   class="requirement-tag"
                 >
-                  {{ scope.row.hospitalRequired ? 'Hospital Only' : 'No Hospital' }}
+                  {{ scope.row.hospital_required ? 'Hospital Only' : 'No Hospital' }}
                 </el-tag>
               </div>
             </template>
@@ -224,7 +278,7 @@
               <div class="operations-container">
                 <el-button
                   size="small"
-                  @click="editInsurance(scope.$index)"
+                  @click="editInsurance(scope.row)"
                   type="primary"
                   plain
                 >
@@ -234,7 +288,8 @@
                   size="small"
                   type="danger"
                   plain
-                  @click="removeInsurance(scope.$index)"
+                  @click="removeInsurance(scope.row)"
+                  :loading="pharmacyDrugStore.loading"
                 >
                   Delete
                 </el-button>
@@ -252,14 +307,19 @@
 </template>
 
 <script setup>
-import { ref, reactive, defineProps, defineEmits, computed } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ref, reactive, defineProps, defineEmits, computed, onMounted, watch } from 'vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { useInsuranceStore } from '@/stores/insuranceStore'
+import { usePharmacyDrugStore } from '@/stores/pharmacyDrugStore'
 
 const props = defineProps({
   modelValue: {
     type: Array,
     required: true
+  },
+  medicineDetails: {
+    type: Object,
+    default: () => ({})
   }
 })
 
@@ -267,13 +327,52 @@ const emit = defineEmits(['update:modelValue'])
 
 const specialtyInput = ref('')
 const isEditing = ref(false)
+const editingInsuranceId = ref(null)
 const insuranceStore = useInsuranceStore()
+const pharmacyDrugStore = usePharmacyDrugStore()
+
+// Formatted input values for price and share
+const formattedPrice = ref('')
+const formattedShare = ref('')
+
+// Validation states
+const isPercentageInvalid = ref(false)
 
 // Get insurance data from the store
 const availableInsurances = computed(() => insuranceStore.insurances)
 
+// Get drug insurances from the store
+const drugInsurances = computed(() => {
+  if (props.medicineDetails.id) {
+    return pharmacyDrugStore.drugInsurances.filter(
+      insurance => insurance.drug === props.medicineDetails.id
+    )
+  }
+  return []
+})
+
+// Get available insurances excluding those already in the table
+const getAvailableInsurances = computed(() => {
+  // Get insurance IDs that are already used in the table
+  const usedInsuranceIds = drugInsurances.value.map(insurance => insurance.insurance)
+  
+  // When editing, exclude the current insurance being edited from the used list
+  let filteredUsedIds = usedInsuranceIds
+  if (isEditing.value && editingInsuranceId.value) {
+    const editingInsurance = drugInsurances.value.find(ins => ins.id === editingInsuranceId.value)
+    if (editingInsurance) {
+      filteredUsedIds = usedInsuranceIds.filter(id => id !== editingInsurance.insurance)
+    }
+  }
+  
+  // Return insurances that are not already used
+  return availableInsurances.value.filter(insurance => 
+    !filteredUsedIds.includes(insurance.id)
+  )
+})
+
 // Add specialty suggestions
-const specialtySuggestions = [
+const specialtySuggestions = ref([
   'Cardiology',
   'Dermatology',
   'Endocrinology',
@@ -290,58 +389,151 @@ const specialtySuggestions = [
   'Rheumatology',
   'Urology',
   'Pharmacist'
-]
+])
 
 const currentInsurance = reactive({
-  insuranceId: null,
-  insuranceName: '',
+  id: null,
+  drug: null,
+  insurance: null,
+  insurance_name: '',
   specialties: [],
   price: 0,
   percentage: 0,
-  coverageAmount: 0,
+  coverage_amount: 0,
   share: 0,
   total: 0,
-  numMax: 0,
-  ageMax: 0,
-  barcodeRequired: false,
-  hospitalRequired: false
+  num_max: null,
+  age_max: null,
+  barcode_required: false,
+  hospital_required: false
 })
 
-const updateInsurances = () => {
-  emit('update:modelValue', props.modelValue)
-  isEditing.value = true
-}
+// Initialize stores on component mount
+onMounted(async () => {
+  await insuranceStore.fetchInsurances()
+  if (props.medicineDetails.id) {
+    await pharmacyDrugStore.fetchDrugInsurances(props.medicineDetails.id)
+  }
+})
+
+// Watch for changes in medicine details
+watch(() => props.medicineDetails.id, async (newId) => {
+  if (newId) {
+    await pharmacyDrugStore.fetchDrugInsurances(newId)
+  }
+})
 
 const querySpecialtySearch = (queryString, callback) => {
   const results = queryString
-    ? specialtySuggestions.filter(item => {
+    ? specialtySuggestions.value.filter(item => {
         return item.toLowerCase().includes(queryString.toLowerCase())
       })
-    : specialtySuggestions
+    : specialtySuggestions.value
   
   callback(results.map(item => ({ value: item })))
 }
 
-const updateCurrentCoverageAmount = () => {
-  currentInsurance.coverageAmount = (currentInsurance.price * currentInsurance.percentage / 100).toFixed(2)
-  currentInsurance.total = parseFloat(currentInsurance.coverageAmount) + parseFloat(currentInsurance.share || 0)
+// Format number with thousands separators (no decimals)
+const formatNumber = (num) => {
+  if (!num && num !== 0) return ''
+  return Math.round(Number(num)).toLocaleString()
 }
 
-const handleCurrentInsuranceSelect = (insuranceId) => {
+// Remove formatting and get raw number
+const parseFormattedNumber = (str) => {
+  if (!str) return 0
+  // Remove commas and any non-digit characters
+  const cleaned = str.replace(/[^\d]/g, '')
+  return parseInt(cleaned) || 0
+}
+
+// Handle price input with real-time formatting
+const handlePriceInput = (value) => {
+  // Remove formatting to get raw number
+  const rawNumber = parseFormattedNumber(value)
+  
+  // Update the actual price in currentInsurance
+  currentInsurance.price = rawNumber
+  
+  // Format the display value
+  if (value && rawNumber > 0) {
+    // Only format if there's a valid number
+    const formatted = formatNumber(rawNumber)
+    if (formatted !== value) {
+      // Update the display value if it's different
+      formattedPrice.value = formatted
+    }
+  }
+  
+  updateCurrentCoverageAmount()
+}
+
+// Handle share input with real-time formatting
+const handleShareInput = (value) => {
+  // Remove formatting to get raw number
+  const rawNumber = parseFormattedNumber(value)
+  
+  // Update the actual share in currentInsurance
+  currentInsurance.share = rawNumber
+  
+  // Format the display value
+  if (value && rawNumber > 0) {
+    // Only format if there's a valid number
+    const formatted = formatNumber(rawNumber)
+    if (formatted !== value) {
+      // Update the display value if it's different
+      formattedShare.value = formatted
+    }
+  }
+  
+  updateCurrentCoverageAmount()
+}
+
+// Format price display on blur
+const formatPriceDisplay = () => {
+  if (currentInsurance.price > 0) {
+    formattedPrice.value = formatNumber(currentInsurance.price)
+  } else if (!formattedPrice.value) {
+    formattedPrice.value = ''
+  }
+}
+
+// Format share display on blur
+const formatShareDisplay = () => {
+  if (currentInsurance.share > 0) {
+    formattedShare.value = formatNumber(currentInsurance.share)
+  } else if (!formattedShare.value) {
+    formattedShare.value = ''
+  }
+}
+
+const updateCurrentCoverageAmount = () => {
+  const price = parseInt(currentInsurance.price) || 0
+  const percentage = parseFloat(currentInsurance.percentage) || 0
+  const share = parseInt(currentInsurance.share) || 0
+  
+  currentInsurance.coverage_amount = Math.round(price * percentage / 100)
+  currentInsurance.total = currentInsurance.coverage_amount + share
+}
+
+const handleInsuranceSelect = (insuranceId) => {
   const selectedInsurance = availableInsurances.value.find(ins => ins.id === insuranceId)
   if (selectedInsurance) {
-    currentInsurance.insuranceName = selectedInsurance.name
-    currentInsurance.percentage = selectedInsurance.coveragePercentage
+    currentInsurance.insurance_name = selectedInsurance.name
+    // Set default percentage from insurance if not already set
+    if (!currentInsurance.percentage) {
+      currentInsurance.percentage = selectedInsurance.coverage_percentage || 0
+    }
     updateCurrentCoverageAmount()
   }
 }
 
 const addCurrentSpecialty = (value = null) => {
-  const specialty = value || specialtyInput.value
+  const specialty = value || specialtyInput.value.trim()
   if (specialty && !currentInsurance.specialties.includes(specialty)) {
     currentInsurance.specialties.push(specialty)
-    if (!specialtySuggestions.includes(specialty)) {
-      specialtySuggestions.push(specialty)
+    if (!specialtySuggestions.value.includes(specialty)) {
+      specialtySuggestions.value.push(specialty)
     }
   }
   specialtyInput.value = ''
@@ -355,46 +547,220 @@ const removeCurrentSpecialty = (specialtyIndex) => {
   currentInsurance.specialties.splice(specialtyIndex, 1)
 }
 
-const addNewInsuranceToTable = () => {
-  if (!currentInsurance.insuranceId) {
+const validateInsuranceForm = () => {
+  if (!props.medicineDetails.id) {
+    ElMessage.error('Please save the medicine details first')
+    return false
+  }
+  
+  if (!currentInsurance.insurance) {
+    ElMessage.error('Please select an insurance provider')
+    return false
+  }
+  
+  // Check for duplicate insurance provider
+  const isDuplicateInsurance = drugInsurances.value.some(insurance => {
+    // When editing, exclude the current insurance being edited
+    if (isEditing.value && insurance.id === editingInsuranceId.value) {
+      return false
+    }
+    return insurance.insurance === currentInsurance.insurance
+  })
+  
+  if (isDuplicateInsurance) {
+    const selectedInsurance = availableInsurances.value.find(ins => ins.id === currentInsurance.insurance)
     ElMessage({
       type: 'warning',
-      message: 'Please select an insurance provider'
+      message: `Insurance provider "${selectedInsurance?.name}" already exists in the table. Each insurance provider can only be used once per medicine.`,
+      duration: 4000
     })
+    return false
+  }
+  
+  if (!currentInsurance.price || currentInsurance.price <= 0) {
+    ElMessage.error('Please enter a valid price')
+    return false
+  }
+  
+  if (!currentInsurance.percentage || currentInsurance.percentage < 0 || currentInsurance.percentage > 100) {
+    ElMessage.error('Please enter a valid coverage percentage (0-100)')
+    return false
+  }
+  
+  // Additional check using the validation state
+  if (isPercentageInvalid.value) {
+    ElMessage.error('Please enter a valid coverage percentage (0-100)')
+    return false
+  }
+  
+  return true
+}
+
+const saveInsuranceCoverage = async () => {
+  if (!validateInsuranceForm()) {
     return
   }
   
-  props.modelValue.push({...currentInsurance})
-  updateInsurances()
-  
-  // Reset current insurance
+  try {
+    const insuranceData = {
+      drug: props.medicineDetails.id,
+      insurance: currentInsurance.insurance,
+      specialties: currentInsurance.specialties,
+      price: parseInt(currentInsurance.price) || 0,
+      percentage: parseInt(currentInsurance.percentage),
+      share: parseInt(currentInsurance.share) || 0,
+      num_max: currentInsurance.num_max || null,
+      age_max: currentInsurance.age_max || null,
+      barcode_required: currentInsurance.barcode_required,
+      hospital_required: currentInsurance.hospital_required
+    }
+    
+    if (isEditing.value && editingInsuranceId.value) {
+      // Update existing insurance
+      await pharmacyDrugStore.updateDrugInsurance(editingInsuranceId.value, insuranceData)
+      ElMessage.success('Insurance coverage updated successfully')
+    } else {
+      // Create new insurance
+      await pharmacyDrugStore.createDrugInsurance(insuranceData)
+      ElMessage.success('Insurance coverage added successfully')
+    }
+    
+    // Reset form
+    resetForm()
+    
+    // Refresh the insurance list
+    await pharmacyDrugStore.fetchDrugInsurances(props.medicineDetails.id)
+    
+  } catch (error) {
+    console.error('Error saving insurance coverage:', error)
+    ElMessage.error('Failed to save insurance coverage')
+  }
+}
+
+const editInsurance = (insurance) => {
+  // Populate form with insurance data
   Object.assign(currentInsurance, {
-    insuranceId: null,
-    insuranceName: '',
+    id: insurance.id,
+    drug: insurance.drug,
+    insurance: insurance.insurance,
+    insurance_name: insurance.insurance_name,
+    specialties: [...insurance.specialties],
+    price: insurance.price,
+    percentage: insurance.percentage,
+    coverage_amount: insurance.coverage_amount,
+    share: insurance.share,
+    total: insurance.total,
+    num_max: insurance.num_max,
+    age_max: insurance.age_max,
+    barcode_required: insurance.barcode_required,
+    hospital_required: insurance.hospital_required
+  })
+  
+  // Initialize formatted values
+  formattedPrice.value = insurance.price ? formatNumber(insurance.price) : ''
+  formattedShare.value = insurance.share ? formatNumber(insurance.share) : ''
+  
+  // Validate percentage
+  validatePercentage()
+  
+  isEditing.value = true
+  editingInsuranceId.value = insurance.id
+}
+
+const removeInsurance = async (insurance) => {
+  try {
+    await ElMessageBox.confirm(
+      `Are you sure you want to delete the insurance coverage for ${insurance.insurance_name}?`,
+      'Confirm Delete',
+      {
+        confirmButtonText: 'Delete',
+        cancelButtonText: 'Cancel',
+        type: 'warning',
+      }
+    )
+    
+    await pharmacyDrugStore.deleteDrugInsurance(insurance.id)
+    ElMessage.success('Insurance coverage deleted successfully')
+    
+    // Refresh the insurance list
+    await pharmacyDrugStore.fetchDrugInsurances(props.medicineDetails.id)
+    
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error('Error deleting insurance:', error)
+      ElMessage.error('Failed to delete insurance coverage')
+    }
+  }
+}
+
+const cancelEdit = () => {
+  resetForm()
+}
+
+const resetForm = () => {
+  Object.assign(currentInsurance, {
+    id: null,
+    drug: null,
+    insurance: null,
+    insurance_name: '',
     specialties: [],
     price: 0,
     percentage: 0,
-    coverageAmount: 0,
+    coverage_amount: 0,
     share: 0,
     total: 0,
-    numMax: 0,
-    ageMax: 0,
-    barcodeRequired: false,
-    hospitalRequired: false
+    num_max: null,
+    age_max: null,
+    barcode_required: false,
+    hospital_required: false
   })
+  
+  // Clear formatted values
+  formattedPrice.value = ''
+  formattedShare.value = ''
+  
+  // Reset validation states
+  isPercentageInvalid.value = false
+  
   isEditing.value = false
+  editingInsuranceId.value = null
   specialtyInput.value = ''
 }
 
-const editInsurance = (index) => {
-  Object.assign(currentInsurance, {...props.modelValue[index]})
-  props.modelValue.splice(index, 1)
-  updateInsurances()
+const formatCurrency = (amount) => {
+  if (!amount) return '0'
+  return new Intl.NumberFormat('fa-IR').format(amount)
 }
 
-const removeInsurance = (index) => {
-  props.modelValue.splice(index, 1)
-  updateInsurances()
+const handlePercentageInput = (value) => {
+  // Ensure the percentage is within valid range
+  let percentage = parseFloat(value) || 0
+  
+  // Clamp the value between 0 and 100
+  if (percentage < 0) {
+    percentage = 0
+    currentInsurance.percentage = 0
+  } else if (percentage > 100) {
+    percentage = 100
+    currentInsurance.percentage = 100
+  } else {
+    currentInsurance.percentage = percentage
+  }
+  
+  // Validate the percentage
+  validatePercentage()
+  
+  // Update coverage calculation
+  updateCurrentCoverageAmount()
+}
+
+const validatePercentage = () => {
+  const percentage = currentInsurance.percentage
+  if (percentage < 0 || percentage > 100 || isNaN(percentage)) {
+    isPercentageInvalid.value = true
+  } else {
+    isPercentageInvalid.value = false
+  }
 }
 </script>
 
@@ -420,6 +786,23 @@ const removeInsurance = (index) => {
   margin: 0;
   color: var(--primary-color);
   font-size: 1.1rem;
+}
+
+.header-buttons {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.cancel-button {
+  background-color: #f56565;
+  border-color: #f56565;
+  color: white;
+}
+
+.cancel-button:hover {
+  background-color: #e53e3e;
+  border-color: #e53e3e;
 }
 
 .insurance-form-content {
@@ -520,6 +903,16 @@ const removeInsurance = (index) => {
   align-items: center;
 }
 
+.medicine-name {
+  font-size: 0.9rem;
+  font-weight: normal;
+  color: #67c23a;
+  background-color: #f0f9ff;
+  padding: 4px 8px;
+  border-radius: 4px;
+  border: 1px solid #67c23a;
+}
+
 .needs-container {
   display: flex;
   flex-direction: column;
@@ -541,7 +934,7 @@ const removeInsurance = (index) => {
   width: 100%;
   position: relative;
   height: calc(100% - 40px);
-  min-height: 600px;
+  /* min-height: 600px; */
 }
 
 .insurance-table {
@@ -630,5 +1023,123 @@ const removeInsurance = (index) => {
   display: flex;
   gap: 8px;
   justify-content: center;
+}
+
+/* Loading state styling */
+:deep(.el-loading-mask) {
+  background-color: rgba(255, 255, 255, 0.8);
+}
+
+/* Form validation styling */
+.compact-input.is-error {
+  border-color: #f56c6c;
+}
+
+.compact-input.is-error:focus {
+  border-color: #f56c6c;
+  box-shadow: 0 0 0 2px rgba(245, 108, 108, 0.2);
+}
+
+/* Success state styling */
+.form-section-title .medicine-name {
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .form-row {
+    flex-direction: column;
+    gap: 12px;
+  }
+  
+  .form-group {
+    min-width: 100%;
+  }
+  
+  .insurance-header {
+    flex-direction: column;
+    gap: 10px;
+    align-items: stretch;
+  }
+  
+  .header-buttons {
+    justify-content: center;
+  }
+  
+  .insurance-table-wrapper {
+    min-height: 400px;
+  }
+}
+
+/* Editing insurance highlight */
+.editing-insurance {
+  font-weight: 600;
+  color: var(--warning-color);
+}
+
+/* No more providers warning */
+.no-more-providers-warning {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 2px;
+  background-color: rgba(230, 162, 60, 0.1);
+  border: 1px solid #e6a23c;
+  border-radius: 4px;
+  color: #e6a23c;
+  font-size: 0.85rem;
+  margin-top: 10px;
+}
+
+.no-more-providers-warning .el-icon {
+  font-size: 16px;
+}
+
+/* Price and share input styling */
+.price-input :deep(.el-input__inner),
+.share-input :deep(.el-input__inner) {
+  font-family: var(--font-english);
+  font-weight: 500;
+}
+
+.price-input :deep(.el-input__inner):focus,
+.share-input :deep(.el-input__inner):focus {
+  border-color: var(--primary-color);
+}
+
+/* Price and share input placeholder */
+.price-input :deep(.el-input__inner::placeholder),
+.share-input :deep(.el-input__inner::placeholder) {
+  color: #c0c4cc;
+  font-weight: normal;
+}
+
+/* Percentage validation styling */
+.percentage-error :deep(.el-input__inner) {
+  border-color: #f56c6c !important;
+  background-color: rgba(245, 108, 108, 0.05);
+}
+
+.percentage-error :deep(.el-input__inner):focus {
+  border-color: #f56c6c !important;
+  box-shadow: 0 0 0 2px rgba(245, 108, 108, 0.2) !important;
+}
+
+.error-text {
+  color: #f56c6c;
+  font-size: 0.75rem;
+  margin-top: 3px;
+  display: block;
 }
 </style> 

@@ -278,6 +278,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useMedicinesStore } from '@/store/medicines'
+import { formatDate } from '@/utils/dateUtils'
 
 const route = useRoute()
 const router = useRouter()
@@ -325,11 +326,6 @@ const getKeywords = computed(() => {
 })
 
 // Formatting and utility methods
-const formatDate = (dateString) => {
-  if (!dateString) return 'Not set'
-  return new Date(dateString).toLocaleDateString()
-}
-
 const getExpiryStatus = (dateString) => {
   if (!dateString) return 'Unknown'
   

@@ -1,0 +1,109 @@
+/* Persian Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@100;200;300;400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Arabic:wght@100;200;300;400;500;600;700;800;900&display=swap');
+
+/* Persian font family definitions */
+:root {
+  --font-persian: 'Vazirmatn', 'Noto Sans Arabic', 'Tahoma', 'Arial', sans-serif;
+  --font-english: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  --font-mixed: 'Vazirmatn', 'Inter', 'Noto Sans Arabic', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* Persian text styling */
+.persian-text, 
+.fa-text,
+[lang="fa"],
+[lang="fa-IR"] {
+  font-family: var(--font-persian);
+  direction: rtl;
+  text-align: right;
+  font-feature-settings: 'kern' 1, 'liga' 1;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Mixed content (Persian + English) */
+.mixed-content {
+  font-family: var(--font-mixed);
+}
+
+/* Currency display (Persian Rial) */
+.currency-persian,
+.rial-text {
+  font-family: var(--font-persian);
+  direction: rtl;
+  display: inline-block;
+}
+
+/* Persian numbers */
+.persian-numbers {
+  font-family: var(--font-persian);
+  font-feature-settings: 'tnum' 1; /* Tabular numbers */
+}
+
+/* RTL layout utilities */
+.rtl {
+  direction: rtl;
+  text-align: right;
+}
+
+.ltr {
+  direction: ltr;
+  text-align: left;
+}
+
+/* Auto-detect Persian content and apply appropriate styling */
+*:lang(fa),
+*:lang(fa-IR),
+*[dir="rtl"] {
+  font-family: var(--font-persian);
+}
+
+/* Specific styling for Persian company names and medicine names */
+.medicine-persian-name,
+.company-persian-name {
+  font-family: var(--font-persian);
+  font-weight: 500;
+  direction: rtl;
+  text-align: right;
+}
+
+/* Element Plus components with Persian text */
+.el-table .persian-cell {
+  font-family: var(--font-persian);
+  direction: rtl;
+  text-align: right;
+}
+
+.el-descriptions-item .persian-content {
+  font-family: var(--font-persian);
+  direction: rtl;
+}
+
+/* Form inputs with Persian content */
+.el-input.persian-input input,
+.el-textarea.persian-input textarea {
+  font-family: var(--font-persian);
+  direction: rtl;
+  text-align: right;
+}
+
+/* Price display with Persian Rial */
+.price-display {
+  font-family: var(--font-mixed);
+  direction: rtl;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.price-display .currency {
+  font-family: var(--font-persian);
+  font-size: 0.9em;
+  color: var(--text-secondary, #606266);
+}
+
+.price-display .amount {
+  font-family: var(--font-english);
+  font-weight: 500;
+} 

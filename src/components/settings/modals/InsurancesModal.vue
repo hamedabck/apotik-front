@@ -8,23 +8,58 @@
     <div class="insurances-container">
       <!-- Add New Button -->
       <div class="action-header">
-        <h3 class="section-title">Insurances</h3>
+        <h3 class="section-title">
+          Insurances
+          <span v-if="insuranceStore.pharmacyInfo" class="pharmacy-info">
+            - {{ insuranceStore.pharmacyInfo.name }}
+          </span>
+        </h3>
         <el-button 
           type="primary" 
           icon="el-icon-plus"
           @click="openForm()"
+          :loading="insuranceStore.loading"
         >
           Add New Insurance
         </el-button>
       </div>
 
+      <!-- Loading State -->
+      <div v-if="insuranceStore.loading && insurances.length === 0" class="loading-container">
+        <el-skeleton :rows="5" animated />
+      </div>
+
+      <!-- Error State -->
+      <div v-else-if="insuranceStore.error && insurances.length === 0" class="error-container">
+        <el-alert
+          title="Failed to load insurances"
+          type="error"
+          :description="insuranceStore.error"
+          show-icon
+          :closable="false">
+        </el-alert>
+        <div class="error-actions">
+          <el-button @click="loadInsurances" type="primary">Try Again</el-button>
+        </div>
+      </div>
+
       <!-- Data Table -->
       <data-table
+        v-else
         :columns="columns"
         :items="insurances"
         @edit="openForm"
         @delete="confirmDelete"
+        :loading="insuranceStore.loading"
       >
+        <template #coverage_percentage="{ item }">
+          <el-tag :type="getCoverageTagType(item.coverage_percentage)" size="small">
+            {{ item.coverage_percentage }}%
+          </el-tag>
+        </template>
+        <template #created_at="{ item }">
+          <span>{{ formatDate(item.created_at) }}</span>
+        </template>
       </data-table>
 
       <!-- Form Modal -->
@@ -42,12 +77,16 @@
           <form @submit.prevent="saveItem" class="form-content">
             <!-- Name -->
             <div class="form-group">
-              <label class="form-label">Insurance Name</label>
+              <label class="form-label">Insurance Name *</label>
               <el-input
                 v-model="form.name"
                 placeholder="e.g., BPJS Health, Prudential"
                 required
+                :disabled="formLoading"
               />
+              <div v-if="formErrors.name" class="form-error">
+                {{ formErrors.name }}
+              </div>
             </div>
 
             <!-- Description -->
@@ -58,31 +97,45 @@
                 type="textarea"
                 rows="3"
                 placeholder="Optional description"
+                :disabled="formLoading"
               />
+              <div v-if="formErrors.description" class="form-error">
+                {{ formErrors.description }}
+              </div>
             </div>
 
             <!-- Coverage Percentage -->
             <div class="form-group">
-              <label class="form-label">Coverage Percentage</label>
+              <label class="form-label">Coverage Percentage *</label>
               <el-input-number
-                v-model="form.coveragePercentage"
+                v-model="form.coverage_percentage"
                 :min="0"
                 :max="100"
                 :precision="0"
                 :step="5"
                 style="width: 100%"
+                :disabled="formLoading"
               />
-              <p class="form-help">Percentage of costs covered by this insurance</p>
+              <p class="form-help">Percentage of costs covered by this insurance (0-100%)</p>
+              <div v-if="formErrors.coverage_percentage" class="form-error">
+                {{ formErrors.coverage_percentage }}
+              </div>
+            </div>
+
+            <!-- General form errors -->
+            <div v-if="formErrors.general" class="form-error general-error">
+              {{ formErrors.general }}
             </div>
 
             <div class="form-actions">
-              <el-button @click="closeForm">
+              <el-button @click="closeForm" :disabled="formLoading">
                 Cancel
               </el-button>
               <el-button 
                 type="primary" 
                 native-type="submit"
-                :disabled="!isFormValid"
+                :disabled="!isFormValid || formLoading"
+                :loading="formLoading"
               >
                 {{ editingItem ? 'Update' : 'Save' }}
               </el-button>
@@ -95,10 +148,12 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import { ElMessageBox } from 'element-plus'
 import BaseModal from '../BaseModal.vue'
 import DataTable from '../DataTable.vue'
 import { useInsuranceStore } from '@/stores/insuranceStore'
+import { formatDate } from '@/utils/dateUtils'
 
 const props = defineProps({
   modelValue: {
@@ -112,39 +167,69 @@ const insuranceStore = useInsuranceStore()
 
 // Table configuration
 const columns = [
-  { key: 'id', label: 'ID' },
+  { key: 'id', label: 'ID', width: '70' },
   { key: 'name', label: 'Name' },
   { key: 'description', label: 'Description' },
-  { key: 'coveragePercentage', label: 'Coverage %' }
+  { key: 'coverage_percentage', label: 'Coverage %' },
+  { key: 'created_at', label: 'Created' }
 ]
 
-// Use store data instead of local data
+// Use store data
 const insurances = computed(() => insuranceStore.insurances)
 
 // Form state
 const showForm = ref(false)
 const editingItem = ref(null)
+const formLoading = ref(false)
+const formErrors = ref({})
 const form = ref({
   name: '',
   description: '',
-  coveragePercentage: 80
+  coverage_percentage: 80
 })
 
 // Computed properties
 const isFormValid = computed(() => {
-  return form.value.name
+  return form.value.name && form.value.coverage_percentage !== null
 })
+
+// Load insurances on component mount
+onMounted(async () => {
+  await loadInsurances()
+})
+
+// Methods
+const loadInsurances = async () => {
+  try {
+    await insuranceStore.fetchInsurances()
+  } catch (error) {
+    console.error('Failed to load insurances:', error)
+  }
+}
+
+// Get coverage tag type for styling
+const getCoverageTagType = (percentage) => {
+  if (percentage >= 80) return 'success'
+  if (percentage >= 50) return 'warning'
+  return 'danger'
+}
 
 // Form methods
 const openForm = (item = null) => {
   editingItem.value = item
+  formErrors.value = {}
+  
   if (item) {
-    form.value = { ...item }
+    form.value = { 
+      name: item.name,
+      description: item.description || '',
+      coverage_percentage: item.coverage_percentage
+    }
   } else {
     form.value = {
       name: '',
       description: '',
-      coveragePercentage: 80
+      coverage_percentage: 80
     }
   }
   showForm.value = true
@@ -153,35 +238,77 @@ const openForm = (item = null) => {
 const closeForm = () => {
   showForm.value = false
   editingItem.value = null
+  formErrors.value = {}
   form.value = {
     name: '',
     description: '',
-    coveragePercentage: 80
+    coverage_percentage: 80
   }
 }
 
-const saveItem = () => {
+const saveItem = async () => {
   if (!isFormValid.value) return
 
-  const insuranceData = { ...form.value }
+  formLoading.value = true
+  formErrors.value = {}
 
-  if (editingItem.value) {
-    // Update existing item
-    insuranceStore.updateInsurance(editingItem.value.id, insuranceData)
-  } else {
-    // Add new item
-    const newId = Math.max(...insurances.value.map(item => item.id), 0) + 1
-    insuranceStore.addInsurance({
-      id: newId,
-      ...insuranceData
-    })
+  try {
+    const insuranceData = { ...form.value }
+
+    if (editingItem.value) {
+      // Update existing item
+      await insuranceStore.updateInsurance(editingItem.value.id, insuranceData)
+    } else {
+      // Add new item
+      await insuranceStore.addInsurance(insuranceData)
+    }
+    
+    closeForm()
+  } catch (error) {
+    console.error('Error saving insurance:', error)
+    
+    // Handle validation errors
+    if (error.response?.data) {
+      const errorData = error.response.data
+      
+      // Handle field-specific errors
+      Object.keys(errorData).forEach(field => {
+        if (Array.isArray(errorData[field])) {
+          formErrors.value[field] = errorData[field][0]
+        } else if (typeof errorData[field] === 'string') {
+          formErrors.value[field] = errorData[field]
+        }
+      })
+      
+      // Handle general errors
+      if (errorData.detail) {
+        formErrors.value.general = errorData.detail
+      }
+    } else {
+      formErrors.value.general = 'An unexpected error occurred. Please try again.'
+    }
+  } finally {
+    formLoading.value = false
   }
-  closeForm()
 }
 
-const confirmDelete = (item) => {
-  if (confirm('Are you sure you want to delete this insurance?')) {
-    insuranceStore.deleteInsurance(item.id)
+const confirmDelete = async (item) => {
+  try {
+    await ElMessageBox.confirm(
+      `Are you sure you want to delete "${item.name}"? This action cannot be undone.`,
+      'Confirm Delete',
+      {
+        confirmButtonText: 'Delete',
+        cancelButtonText: 'Cancel',
+        type: 'warning',
+      }
+    )
+    
+    await insuranceStore.deleteInsurance(item.id)
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error('Error deleting insurance:', error)
+    }
   }
 }
 </script>
@@ -205,6 +332,13 @@ const confirmDelete = (item) => {
   font-weight: 600;
   color: #1e293b;
   margin: 0;
+}
+
+.pharmacy-info {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #64748b;
+  margin-left: 0.5rem;
 }
 
 /* Form Modal */
@@ -305,6 +439,24 @@ const confirmDelete = (item) => {
   display: flex;
   justify-content: flex-end;
   gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.loading-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 1.5rem;
+}
+
+.error-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 1.5rem;
+}
+
+.error-actions {
   margin-top: 1rem;
 }
 </style> 
